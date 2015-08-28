@@ -1,6 +1,8 @@
 # ciss465project1
 
-Text
+Requirements for compiling and running:
 
--a
--list
+-git clone (yourrepoaddress)
+-cd (yourgame)
+-make
+-./(yourgame)
