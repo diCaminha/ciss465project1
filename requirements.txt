@@ -1,1 +1,11 @@
-requirments
+requirments.txt
+ciss465 project1
+9-5-2015
+David Rawlings
+
+User requirments:
+(We are still discussing user requirments)
+
+There will be an airplane that will move up, down, left, right by the arrow keys. The airplane will travel through buildings (terrain). User will get 1 point for every 1/10 of a second they survive. If the airplane hits the side of a building then the game will end, game over will be printed along with the score.
+
+Buildings will move from right to left on the screen. Buildings will be randomly generated but coherent. It will be challenging but not impossible to move through.
