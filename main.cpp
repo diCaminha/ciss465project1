@@ -1,7 +1,7 @@
 //This code was based in a code found on the website: http://lazyfoo.net/tutorials/SDL/01_hello_SDL/linux/cli/index.php
 
 #include "SDL2/SDL.h"
-#include <stdio.h>
+#include <iostream>
 
 //Screen dimension constants
 const int SCREEN_WIDTH = 640;
@@ -11,10 +11,12 @@ const int SCREEN_HEIGHT = 480;
 SDL_Window* myWindow = NULL;
 	
 //The surface contained by the window
-SDL_Surface* screen = NULL;
+SDL_Surface* screenSurface = NULL;
 
 //The image we will load and show on the screen
-SDL_Surface* gHelloWorld = NULL;
+SDL_Surface* spaceShipSurface = NULL;
+
+SDL_Surface* getSurfaceImageBy( std::string path );
 
 bool init()
 {
@@ -42,7 +44,7 @@ bool init()
         else
         {
             //Get window surface
-            screen = SDL_GetWindowSurface( myWindow );
+            screenSurface = SDL_GetWindowSurface( myWindow );
         }
     }
     return success;
@@ -51,8 +53,8 @@ bool init()
 void close()
 {
     //Deallocate surface
-    SDL_FreeSurface( gHelloWorld );
-    gHelloWorld = NULL;
+    SDL_FreeSurface( spaceShipSurface );
+    spaceShipSurface = NULL;
 
     //Destroy window
     SDL_DestroyWindow( myWindow );
@@ -68,15 +70,19 @@ bool loadMedia()
     bool success = true;
 
     //Load splash image
-    gHelloWorld = SDL_LoadBMP( "spaceship.bmp" );
-    if( gHelloWorld == NULL )
-    {
-        printf( "Unable to load image %s! SDL Error: %s\n",
-                "02_getting_an_image_on_the_screen/hello_world.bmp",
-                SDL_GetError() );
-        success = false;
-    }
+    spaceShipSurface = getSurfaceImageBy("spaceship.bmp" );
+    
     return success;
+}
+
+
+//Function that load surfaces by the path of the image in the parameter
+SDL_Surface* getSurfaceImageBy( std::string path )
+{
+    //getting a surface from a specific path, passed by parameter
+    SDL_Surface* surface = SDL_LoadBMP( path.c_str());
+    
+    return surface;
 }
 
 
@@ -97,8 +103,8 @@ int main( int argc, char* args[] )
         }
         else
         {
-            //Apply the image
-            SDL_BlitSurface( gHelloWorld, NULL, screen, NULL );
+            //Apply the image of the spaceship on the screen
+            SDL_BlitSurface( spaceShipSurface, NULL, screenSurface, NULL );
 
             //Update the surface
             SDL_UpdateWindowSurface( myWindow );
