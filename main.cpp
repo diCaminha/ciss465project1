@@ -104,10 +104,10 @@ int main( int argc, char* args[] )
         else
         {
             //Apply the image of the spaceship on the screen
-            SDL_BlitSurface( spaceShipSurface, NULL, screenSurface, NULL );
+            //SDL_BlitSurface( spaceShipSurface, NULL, screenSurface, NULL );
 
             //Update the surface
-            SDL_UpdateWindowSurface( myWindow );
+            //SDL_UpdateWindowSurface( myWindow );
 
             //Wait two seconds
             //SDL_Delay( 10000 );
@@ -119,10 +119,18 @@ int main( int argc, char* args[] )
 
     //Event handler
     SDL_Event e;
+    
+    //Apply the image of the spaceship on the screen        
+    SDL_Rect rect;
+    rect.x = 305;
+    rect.y = 225;
+    rect.w = 100;
+    rect.h = 100;
 
     //While application is running
     while( !quit )
-    {
+    {       
+        
         //Handle events on queue
         while( SDL_PollEvent( &e ) != 0 )
         {
@@ -131,7 +139,44 @@ int main( int argc, char* args[] )
             {
                 quit = true;
             }
+            //User presses a key
+            else if( e.type == SDL_KEYDOWN )
+            {
+                //Select surfaces based on key press
+                switch( e.key.keysym.sym )
+                {
+                    case SDLK_UP:
+                        std::cout << "up" << std::endl;
+                        rect.y -= 5;
+                        break;
+
+                    case SDLK_DOWN:
+                        std::cout << "down" << std::endl;
+                        rect.y += 5;
+                        break;
+
+                    case SDLK_LEFT:
+                        std::cout << "left" << std::endl;
+                        rect.x -= 5;
+                        break;
+
+                    case SDLK_RIGHT:
+                        std::cout << "right" << std::endl;
+                        rect.x += 5;
+                        break;
+
+                    default:
+                        std::cout << "unknown" << std::endl;
+                        break;
+                }
+            }
         }
+                
+        SDL_FillRect(screenSurface, NULL, 0x000000);
+        SDL_BlitSurface( spaceShipSurface, NULL, screenSurface, &rect );
+        
+        //Update the surface
+        SDL_UpdateWindowSurface( myWindow );
     }
 
     //Free resources and close SDL
