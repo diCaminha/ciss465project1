@@ -8,15 +8,42 @@ const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 
 //The window we'll be rendering to
-SDL_Window* myWindow = NULL;
+SDL_Window* window = NULL;
 	
 //The surface contained by the window
 SDL_Surface* screenSurface = NULL;
 
+SDL_Surface* getSurfaceImageBy( std::string path );
+bool loadMedia();
+
+// spaceship class
+// contains an surface which is initialized in the contructor by calling
+// getSurfaceImageBy
+// contains a rect, with x, y, w, h (I didn't bother with looking into
+// calling the super constructor)
+// contains xVel, yVel to make movement smoother
+class Spaceship    
+{
+public:
+    Spaceship()
+        : surface(getSurfaceImageBy("spaceship.bmp")),
+          xVel(0), yVel(0)
+    {
+        rect.x = 305;
+        rect.y = 225;
+        rect.w = 30;
+        rect.h = 30;        
+    }
+    
+    SDL_Surface* surface;
+    SDL_Rect rect;
+    int xVel;
+    int yVel;
+};
+
 //The image we will load and show on the screen
 SDL_Surface* spaceShipSurface = NULL;
 
-SDL_Surface* getSurfaceImageBy( std::string path );
 
 bool init()
 {
@@ -32,10 +59,11 @@ bool init()
     else
     {
         //Create window
-        myWindow = SDL_CreateWindow( "SDL Tutorial", SDL_WINDOWPOS_UNDEFINED,
-                                    SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH,
-                                    SCREEN_HEIGHT, SDL_WINDOW_SHOWN );
-        if( myWindow == NULL )
+        window = SDL_CreateWindow( "Spaceship in a Cave",
+                                   SDL_WINDOWPOS_UNDEFINED,
+                                   SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH,
+                                   SCREEN_HEIGHT, SDL_WINDOW_SHOWN );
+        if( window == NULL )
         {
             printf( "Window could not be created! SDL_Error: %s\n",
                     SDL_GetError() );
@@ -44,7 +72,7 @@ bool init()
         else
         {
             //Get window surface
-            screenSurface = SDL_GetWindowSurface( myWindow );
+            screenSurface = SDL_GetWindowSurface( window );
         }
     }
     return success;
@@ -57,13 +85,14 @@ void close()
     spaceShipSurface = NULL;
 
     //Destroy window
-    SDL_DestroyWindow( myWindow );
-    myWindow = NULL;
+    SDL_DestroyWindow( window );
+    window = NULL;
 
     //Quit SDL subsystems
     SDL_Quit();
 }
 
+/*
 bool loadMedia()
 {
     //Loading success flag
@@ -74,7 +103,7 @@ bool loadMedia()
     
     return success;
 }
-
+*/
 
 //Function that load surfaces by the path of the image in the parameter
 SDL_Surface* getSurfaceImageBy( std::string path )
@@ -85,8 +114,6 @@ SDL_Surface* getSurfaceImageBy( std::string path )
     return surface;
 }
 
-
-
 int main( int argc, char* args[] )
 {               
     //Start up SDL and create window
@@ -94,6 +121,7 @@ int main( int argc, char* args[] )
     {
         printf( "Failed to initialize!\n" );
     }
+    /*
     else
     {
         //Load media
@@ -101,18 +129,8 @@ int main( int argc, char* args[] )
         {
             printf( "Failed to load media!\n" );
         }
-        else
-        {
-            //Apply the image of the spaceship on the screen
-            //SDL_BlitSurface( spaceShipSurface, NULL, screenSurface, NULL );
-
-            //Update the surface
-            //SDL_UpdateWindowSurface( myWindow );
-
-            //Wait two seconds
-            //SDL_Delay( 10000 );
-        }
     }
+    */
 
      //Main loop flag
     bool quit = false;
@@ -121,16 +139,18 @@ int main( int argc, char* args[] )
     SDL_Event e;
     
     //Apply the image of the spaceship on the screen        
-    SDL_Rect rect;
-    rect.x = 305;
-    rect.y = 225;
-    rect.w = 100;
-    rect.h = 100;
+    //SDL_Rect shipRect;
+    //shipRect.x = 305;    
+    //shipRect.y = 225;
+    //shipRect.w = 30;
+    //shipRect.h = 30;
 
+    // create the spaceship object
+    Spaceship spaceship;
+    
     //While application is running
     while( !quit )
-    {       
-        
+    {        
         //Handle events on queue
         while( SDL_PollEvent( &e ) != 0 )
         {
@@ -146,37 +166,45 @@ int main( int argc, char* args[] )
                 switch( e.key.keysym.sym )
                 {
                     case SDLK_UP:
-                        std::cout << "up" << std::endl;
-                        rect.y -= 5;
+                        //std::cout << "up" << std::endl;
+                        spaceship.yVel = -1;
                         break;
 
                     case SDLK_DOWN:
-                        std::cout << "down" << std::endl;
-                        rect.y += 5;
+                        //std::cout << "down" << std::endl;
+                        spaceship.yVel = 1;
                         break;
 
                     case SDLK_LEFT:
-                        std::cout << "left" << std::endl;
-                        rect.x -= 5;
+                        //std::cout << "left" << std::endl;
+                        spaceship.xVel = -1;
                         break;
 
                     case SDLK_RIGHT:
-                        std::cout << "right" << std::endl;
-                        rect.x += 5;
+                        //std::cout << "right" << std::endl;
+                        spaceship.xVel = 1;
                         break;
 
                     default:
-                        std::cout << "unknown" << std::endl;
+                        //std::cout << "unknown" << std::endl;
                         break;
                 }
             }
+            else
+            {                
+                spaceship.xVel = 0;                
+                spaceship.yVel = 0;
+            }                
         }
+        spaceship.rect.x += spaceship.xVel;
+        spaceship.rect.y += spaceship.yVel;
                 
         SDL_FillRect(screenSurface, NULL, 0x000000);
-        SDL_BlitSurface( spaceShipSurface, NULL, screenSurface, &rect );
+        SDL_BlitSurface( spaceship.surface, NULL, screenSurface,
+                         &spaceship.rect );
         
         //Update the surface
-        SDL_UpdateWindowSurface( myWindow );
+        SDL_UpdateWindowSurface( window );
     }
 
     //Free resources and close SDL
