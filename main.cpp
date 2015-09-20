@@ -41,6 +41,21 @@ public:
     int yVel;
 };
 
+class Maze
+{
+public:
+    Maze()        
+        : surface(getSurfaceImageBy("maze.bmp")), exist(true)
+    {
+        rect.w = 30;
+        rect.h = 30;
+    }
+    
+    SDL_Surface* surface;
+    SDL_Rect rect;
+    bool exist;
+};
+
 //The image we will load and show on the screen
 SDL_Surface* spaceShipSurface = NULL;
 
@@ -59,7 +74,7 @@ bool init()
     else
     {
         //Create window
-        window = SDL_CreateWindow( "Spaceship in a Cave",
+        window = SDL_CreateWindow( "It's a beautiful night in the city",
                                    SDL_WINDOWPOS_UNDEFINED,
                                    SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH,
                                    SCREEN_HEIGHT, SDL_WINDOW_SHOWN );
@@ -137,20 +152,40 @@ int main( int argc, char* args[] )
 
     //Event handler
     SDL_Event e;
-    
-    //Apply the image of the spaceship on the screen        
-    //SDL_Rect shipRect;
-    //shipRect.x = 305;    
-    //shipRect.y = 225;
-    //shipRect.w = 30;
-    //shipRect.h = 30;
 
     // create the spaceship object
     Spaceship spaceship;
+
+    // set how many peices the maze will have
+    const int MAZE_WIDTH = 23;
+    const int MAZE_HEIGHT = 16;
+    // create the maze array
+    Maze maze[MAZE_WIDTH][MAZE_HEIGHT];
+    // position the maze array
+    for (int i = 0; i < MAZE_WIDTH; ++i)
+    {
+        for (int j = 0; j < MAZE_HEIGHT; ++j)
+        {            
+            maze[i][j].rect.x = i * 30;
+            maze[i][j].rect.y = j * 30;
+        }
+    }
+
+    // cut out some of the maze temporarily just so we can see it
+    for (int i = 0; i < MAZE_WIDTH; ++i)
+    {
+        for (int j = 6; j < 10; ++j)
+        {
+            maze[i][j].exist = false;
+        }
+    }
+
     
     //While application is running
     while( !quit )
-    {        
+    {
+        // 1 INPUT ------------------------------------------------------------
+        
         //Handle events on queue
         while( SDL_PollEvent( &e ) != 0 )
         {
@@ -161,32 +196,27 @@ int main( int argc, char* args[] )
             }
             //User presses a key
             else if( e.type == SDL_KEYDOWN )
-            {
-                //Select surfaces based on key press
+            {                
                 switch( e.key.keysym.sym )
                 {
                     case SDLK_UP:
-                        //std::cout << "up" << std::endl;
                         spaceship.yVel = -1;
+                        //std::cout << "up" << ' ';
                         break;
 
                     case SDLK_DOWN:
-                        //std::cout << "down" << std::endl;
                         spaceship.yVel = 1;
+                        //std::cout << "down" << ' ';
                         break;
 
                     case SDLK_LEFT:
-                        //std::cout << "left" << std::endl;
                         spaceship.xVel = -1;
+                        //std::cout << "left" << ' ';
                         break;
 
                     case SDLK_RIGHT:
-                        //std::cout << "right" << std::endl;
                         spaceship.xVel = 1;
-                        break;
-
-                    default:
-                        //std::cout << "unknown" << std::endl;
+                        //std::cout << "right" << ' ';
                         break;
                 }
             }
@@ -196,10 +226,52 @@ int main( int argc, char* args[] )
                 spaceship.yVel = 0;
             }                
         }
+
+        // 2 UPDATE -----------------------------------------------------------
+
+        // update spaceship
         spaceship.rect.x += spaceship.xVel;
         spaceship.rect.y += spaceship.yVel;
-                
+
+        // move maze        
+        for (int i = 0; i < MAZE_WIDTH; ++i)
+        {
+            for (int j = 0; j < MAZE_HEIGHT; ++j)
+            {
+                maze[i][j].rect.x -= 1;
+            }
+        }
+
+        // if maze touches wall        
+        for (int i = 0; i < MAZE_WIDTH; ++i)
+        {
+            if (maze[i][0].rect.x < 0)
+            {
+                for (int j = 0; j < MAZE_HEIGHT; ++j)
+                {
+                    maze[i][j].rect.x = maze[0][0].rect.w * (MAZE_WIDTH - 2);
+                }
+            }
+        }                
+
+        // 3 DRAW -------------------------------------------------------------
+        
         SDL_FillRect(screenSurface, NULL, 0x000000);
+
+        // draw maze
+        for (int i = 0; i < MAZE_WIDTH; ++i)
+        {
+            for (int j = 0; j < MAZE_HEIGHT; ++j)
+            {
+                if (maze[i][j].exist)
+                {
+                    SDL_BlitSurface( maze[i][j].surface, NULL, screenSurface,
+                                     &maze[i][j].rect );
+                }
+            }
+        }
+
+        // draw spaceship
         SDL_BlitSurface( spaceship.surface, NULL, screenSurface,
                          &spaceship.rect );
         
