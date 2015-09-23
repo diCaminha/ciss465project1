@@ -171,10 +171,18 @@ int main( int argc, char* args[] )
         }
     }
 
-    // cut out some of the maze temporarily just so we can see it
+    // cut out some of the maze temporarily just so we can see it    
     for (int i = 0; i < MAZE_WIDTH; ++i)
     {
         for (int j = 6; j < 10; ++j)
+        {
+            maze[i][j].exist = false;
+        }
+    }
+
+    for (int i = 0; i < 10; ++i)
+    {
+        for (int j = 3; j < 6; ++j)
         {
             maze[i][j].exist = false;
         }
@@ -185,6 +193,12 @@ int main( int argc, char* args[] )
     while( !quit )
     {
         // 1 INPUT ------------------------------------------------------------
+
+        Uint32 totalTime, timeSinceLastLoop, oldTotalTime;
+        totalTime = SDL_GetTicks();
+        timeSinceLastLoop = totalTime - oldTotalTime;            
+        oldTotalTime = totalTime;
+        std::cout << timeSinceLastLoop << std::endl;
         
         //Handle events on queue
         while( SDL_PollEvent( &e ) != 0 )
@@ -230,8 +244,8 @@ int main( int argc, char* args[] )
         // 2 UPDATE -----------------------------------------------------------
 
         // update spaceship
-        spaceship.rect.x += spaceship.xVel;
-        spaceship.rect.y += spaceship.yVel;
+        spaceship.rect.x += spaceship.xVel * timeSinceLastLoop;
+        spaceship.rect.y += spaceship.yVel * timeSinceLastLoop;
 
         // move maze        
         for (int i = 0; i < MAZE_WIDTH; ++i)
