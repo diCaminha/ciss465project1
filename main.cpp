@@ -7,6 +7,8 @@
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 
+ 
+
 //The window we'll be rendering to
 SDL_Window* window = NULL;
 	
@@ -62,6 +64,7 @@ SDL_Surface* spaceShipSurface = NULL;
 
 bool init()
 {
+    
     //Initialization flag
     bool success = true;
 
@@ -123,6 +126,8 @@ bool loadMedia()
 //Function that load surfaces by the path of the image in the parameter
 SDL_Surface* getSurfaceImageBy( std::string path )
 {
+    
+   
     //getting a surface from a specific path, passed by parameter
     SDL_Surface* surface = SDL_LoadBMP( path.c_str());
     
@@ -131,6 +136,9 @@ SDL_Surface* getSurfaceImageBy( std::string path )
 
 int main( int argc, char* args[] )
 {               
+    
+
+    const Uint8 *keys = SDL_GetKeyboardState(NULL); 
     //Start up SDL and create window
     if( !init() )
     {
@@ -208,45 +216,41 @@ int main( int argc, char* args[] )
             {
                 quit = true;
             }
-            //User presses a key
-            else if( e.type == SDL_KEYDOWN )
-            {                
-                switch( e.key.keysym.sym )
-                {
-                    case SDLK_UP:
-                        spaceship.yVel = -1;
-                        //std::cout << "up" << ' ';
-                        break;
-
-                    case SDLK_DOWN:
-                        spaceship.yVel = 1;
-                        //std::cout << "down" << ' ';
-                        break;
-
-                    case SDLK_LEFT:
-                        spaceship.xVel = -1;
-                        //std::cout << "left" << ' ';
-                        break;
-
-                    case SDLK_RIGHT:
-                        spaceship.xVel = 1;
-                        //std::cout << "right" << ' ';
-                        break;
+          
+          }  
+                   
+                
+                         
+                if (keys[SDL_SCANCODE_LEFT]){
+                    spaceship.xVel = -1;
+                    spaceship.rect.x += spaceship.xVel;
                 }
-            }
-            else
-            {                
-                spaceship.xVel = 0;                
-                spaceship.yVel = 0;
-            }                
-        }
+                if (keys[SDL_SCANCODE_RIGHT]){
+
+                  spaceship.xVel = 1;
+                    spaceship.rect.x += spaceship.xVel;
+                }
+                if (keys[SDL_SCANCODE_DOWN]){
+                    spaceship.yVel = 1;
+                     spaceship.rect.y += spaceship.yVel;
+    
+                }
+                if (keys[SDL_SCANCODE_UP]){ 
+               
+                    spaceship.yVel = -1;
+                    spaceship.rect.y += spaceship.yVel;
+
+                }
+                 // update spaceship
+        
+        
+            
+         
+    
 
         // 2 UPDATE -----------------------------------------------------------
 
-        // update spaceship
-        spaceship.rect.x += spaceship.xVel * timeSinceLastLoop;
-        spaceship.rect.y += spaceship.yVel * timeSinceLastLoop;
-
+       
         // move maze        
         for (int i = 0; i < MAZE_WIDTH; ++i)
         {
@@ -285,6 +289,7 @@ int main( int argc, char* args[] )
             }
         }
 
+        
         // draw spaceship
         SDL_BlitSurface( spaceship.surface, NULL, screenSurface,
                          &spaceship.rect );
@@ -292,7 +297,7 @@ int main( int argc, char* args[] )
         //Update the surface
         SDL_UpdateWindowSurface( window );
     }
-
+     
     //Free resources and close SDL
     close();
 
