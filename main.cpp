@@ -2,12 +2,12 @@
 
 #include "SDL2/SDL.h"
 #include <iostream>
+#include <ctime>
+#include <cstdlib>
 
 //Screen dimension constants
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
-
- 
 
 //The window we'll be rendering to
 SDL_Window* window = NULL;
@@ -17,6 +17,13 @@ SDL_Surface* screenSurface = NULL;
 
 SDL_Surface* getSurfaceImageBy( std::string path );
 bool loadMedia();
+
+// set game speed devider (which means the lower the number the faster
+// everything will move
+const int GAME_SPEED = 5;
+
+// set the size for all the blocks in the game
+const int BLOCK_WIDTH = 30;
 
 // spaceship class
 // contains an surface which is initialized in the contructor by calling
@@ -33,8 +40,8 @@ public:
     {
         rect.x = 305;
         rect.y = 225;
-        rect.w = 30;
-        rect.h = 30;        
+        rect.w = BLOCK_WIDTH;
+        rect.h = BLOCK_WIDTH;        
     }
     
     SDL_Surface* surface;
@@ -49,14 +56,16 @@ public:
     Maze()        
         : surface(getSurfaceImageBy("maze.bmp")), exist(true)
     {
-        rect.w = 30;
-        rect.h = 30;
+        rect.w = BLOCK_WIDTH;
+        rect.h = BLOCK_WIDTH;
     }
     
     SDL_Surface* surface;
     SDL_Rect rect;
     bool exist;
 };
+
+const int MAZE_SPEED = 1;
 
 //The image we will load and show on the screen
 SDL_Surface* spaceShipSurface = NULL;
@@ -136,7 +145,7 @@ SDL_Surface* getSurfaceImageBy( std::string path )
 
 int main( int argc, char* args[] )
 {               
-    
+    srand((unsigned int) time(NULL));
 
     const Uint8 *keys = SDL_GetKeyboardState(NULL); 
     //Start up SDL and create window
@@ -167,6 +176,7 @@ int main( int argc, char* args[] )
     // set how many peices the maze will have
     const int MAZE_WIDTH = 23;
     const int MAZE_HEIGHT = 16;
+    int mazeRightEdge;
     // create the maze array
     Maze maze[MAZE_WIDTH][MAZE_HEIGHT];
     // position the maze array
@@ -174,8 +184,8 @@ int main( int argc, char* args[] )
     {
         for (int j = 0; j < MAZE_HEIGHT; ++j)
         {            
-            maze[i][j].rect.x = i * 30;
-            maze[i][j].rect.y = j * 30;
+            maze[i][j].rect.x = i * BLOCK_WIDTH;
+            maze[i][j].rect.y = j * BLOCK_WIDTH;
         }
     }
 
@@ -201,12 +211,13 @@ int main( int argc, char* args[] )
     while( !quit )
     {
         // 1 INPUT ------------------------------------------------------------
-
-        Uint32 totalTime, timeSinceLastLoop, oldTotalTime;
+        
+        //Uint32 totalTime, timeSinceLastLoop, oldTotalTime;
+        int totalTime, timeSinceLastLoop, oldTotalTime;
         totalTime = SDL_GetTicks();
         timeSinceLastLoop = totalTime - oldTotalTime;            
         oldTotalTime = totalTime;
-        std::cout << timeSinceLastLoop << std::endl;
+        //std::cout << timeSinceLastLoop << std::endl;
         
         //Handle events on queue
         while( SDL_PollEvent( &e ) != 0 )
@@ -223,22 +234,26 @@ int main( int argc, char* args[] )
                          
                 if (keys[SDL_SCANCODE_LEFT]){
                     spaceship.xVel = -1;
-                    spaceship.rect.x += spaceship.xVel;
+                    spaceship.rect.x += spaceship.xVel
+                        * timeSinceLastLoop / GAME_SPEED;
                 }
                 if (keys[SDL_SCANCODE_RIGHT]){
 
                   spaceship.xVel = 1;
-                    spaceship.rect.x += spaceship.xVel;
+                    spaceship.rect.x += spaceship.xVel
+                        * timeSinceLastLoop / GAME_SPEED;
                 }
                 if (keys[SDL_SCANCODE_DOWN]){
                     spaceship.yVel = 1;
-                     spaceship.rect.y += spaceship.yVel;
+                     spaceship.rect.y += spaceship.yVel
+                         * timeSinceLastLoop / GAME_SPEED;
     
                 }
                 if (keys[SDL_SCANCODE_UP]){ 
                
                     spaceship.yVel = -1;
-                    spaceship.rect.y += spaceship.yVel;
+                    spaceship.rect.y += spaceship.yVel
+                        * timeSinceLastLoop / GAME_SPEED;
 
                 }
                  // update spaceship
@@ -249,16 +264,27 @@ int main( int argc, char* args[] )
     
 
         // 2 UPDATE -----------------------------------------------------------
-
        
-        // move maze        
+        // move maze
         for (int i = 0; i < MAZE_WIDTH; ++i)
         {
             for (int j = 0; j < MAZE_HEIGHT; ++j)
             {
-                maze[i][j].rect.x -= 1;
+                maze[i][j].rect.x -= std::abs(spaceship.xVel)
+                        * timeSinceLastLoop / GAME_SPEED;
             }
         }
+        
+        // determine maze right edge
+        mazeRightEdge = maze[0][0].rect.x;
+        for (int i = 1; i < MAZE_WIDTH; ++i)
+        {
+            if (maze[i][0].rect.x + BLOCK_WIDTH > mazeRightEdge)
+                mazeRightEdge = maze[i][0].rect.x + BLOCK_WIDTH;
+        }
+        
+        // generate maze
+        //std::cout << rand() % 3 << std::endl;
 
         // if maze touches wall        
         for (int i = 0; i < MAZE_WIDTH; ++i)
@@ -267,7 +293,8 @@ int main( int argc, char* args[] )
             {
                 for (int j = 0; j < MAZE_HEIGHT; ++j)
                 {
-                    maze[i][j].rect.x = maze[0][0].rect.w * (MAZE_WIDTH - 2);
+                    maze[i][j].rect.x = mazeRightEdge;
+                    //maze[0][0].rect.w * (MAZE_WIDTH - 2);
                 }
             }
         }                
