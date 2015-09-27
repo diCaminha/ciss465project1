@@ -20,7 +20,7 @@ bool loadMedia();
 
 // set game speed devider (which means the lower the number the faster
 // everything will move
-const int GAME_SPEED = 5;
+const int GAME_SPEED = 4;
 
 // set the size for all the blocks in the game
 const int BLOCK_WIDTH = 30;
@@ -177,6 +177,7 @@ int main( int argc, char* args[] )
     const int MAZE_WIDTH = 23;
     const int MAZE_HEIGHT = 16;
     int mazeRightEdge;
+    int mazeTop = 6, mazeBottom = 10;
     // create the maze array
     Maze maze[MAZE_WIDTH][MAZE_HEIGHT];
     // position the maze array
@@ -192,12 +193,13 @@ int main( int argc, char* args[] )
     // cut out some of the maze temporarily just so we can see it    
     for (int i = 0; i < MAZE_WIDTH; ++i)
     {
-        for (int j = 6; j < 10; ++j)
+        for (int j = mazeTop; j < mazeBottom; ++j)
         {
             maze[i][j].exist = false;
         }
     }
 
+    /*
     for (int i = 0; i < 10; ++i)
     {
         for (int j = 3; j < 6; ++j)
@@ -205,6 +207,7 @@ int main( int argc, char* args[] )
             maze[i][j].exist = false;
         }
     }
+    */
 
     
     //While application is running
@@ -282,22 +285,76 @@ int main( int argc, char* args[] )
             if (maze[i][0].rect.x + BLOCK_WIDTH > mazeRightEdge)
                 mazeRightEdge = maze[i][0].rect.x + BLOCK_WIDTH;
         }
-        
-        // generate maze
-        //std::cout << rand() % 3 << std::endl;
 
         // if maze touches wall        
         for (int i = 0; i < MAZE_WIDTH; ++i)
         {
             if (maze[i][0].rect.x < 0)
             {
+                // decide if the maze will change
+                int randomChange = rand() % 5;
+                // there are 4 dirrections for the maze to change so there is
+                // a 4 in 10 chance that it will change every block reset
+                switch (randomChange)
+                {
+                    case 0:
+                        while (rand() % 2 == 0)
+                        {
+                            if (mazeBottom - mazeTop > 3)
+                                ++mazeTop;
+                        }
+                        break;
+                    case 1:
+                        while (rand() % 2 == 0)
+                        {
+                            if (mazeBottom - mazeTop < 6
+                                && mazeTop > 1)
+                                --mazeTop;
+                        }
+                        break;                        
+                    case 2:
+                        while (rand() % 2 == 0)
+                        {       
+                            if (mazeBottom - mazeTop > 3)
+                                --mazeBottom;
+                        }
+                        break;
+                    case 3:                        
+                        while (rand() % 2 == 0)
+                        {
+                            if (mazeBottom - mazeTop < 6
+                                && mazeBottom < MAZE_HEIGHT - 1)
+                                ++mazeBottom;
+                        }
+                        break;                        
+                }
+
+                // update the maze based on changes in mazeTop/mazeBottom
                 for (int j = 0; j < MAZE_HEIGHT; ++j)
                 {
                     maze[i][j].rect.x = mazeRightEdge;
+                    if (j > mazeTop && j < mazeBottom)
+                    {
+                        maze[i][j].exist = false;
+                    }
+                    else
+                    {
+                        maze[i][j].exist = true;
+                    }
                     //maze[0][0].rect.w * (MAZE_WIDTH - 2);
                 }
             }
-        }                
+        }
+
+        /*
+        for (int i = 0; i < MAZE_WIDTH; ++i)
+        {
+            for (int j = mazeTop; j < mazeBottom; ++j)
+            {
+                maze[i][j].exist = false;
+            }
+        }
+        */
 
         // 3 DRAW -------------------------------------------------------------
         
