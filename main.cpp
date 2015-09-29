@@ -274,7 +274,7 @@ int main( int argc, char* args[] )
                     case 0:
                         while (rand() % 2 == 0)
                         {
-                            if (mazeBottom - mazeTop > 3)
+                            if (mazeBottom - mazeTop > 4)
                                 ++mazeTop;
                         }
                         break;
@@ -289,7 +289,7 @@ int main( int argc, char* args[] )
                     case 2:
                         while (rand() % 2 == 0)
                         {       
-                            if (mazeBottom - mazeTop > 3)
+                            if (mazeBottom - mazeTop > 4)
                                 --mazeBottom;
                         }
                         break;
