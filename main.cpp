@@ -20,7 +20,7 @@ bool loadMedia();
 
 // set game speed devider (which means the lower the number the faster
 // everything will move
-const int GAME_SPEED = 4;
+const int GAME_SPEED = 3;
 
 // set the size for all the blocks in the game
 const int BLOCK_WIDTH = 30;
@@ -40,8 +40,8 @@ public:
     {
         rect.x = 305;
         rect.y = 225;
-        rect.w = BLOCK_WIDTH;
-        rect.h = BLOCK_WIDTH;        
+        rect.w = 10;
+        rect.h = 10;        
     }
     
     SDL_Surface* surface;
@@ -105,8 +105,15 @@ bool init()
     return success;
 }
 
+
+
+
 void close()
 {
+    
+
+
+
     //Deallocate surface
     SDL_FreeSurface( spaceShipSurface );
     spaceShipSurface = NULL;
@@ -119,18 +126,7 @@ void close()
     SDL_Quit();
 }
 
-/*
-bool loadMedia()
-{
-    //Loading success flag
-    bool success = true;
 
-    //Load splash image
-    spaceShipSurface = getSurfaceImageBy("spaceship.bmp" );
-    
-    return success;
-}
-*/
 
 //Function that load surfaces by the path of the image in the parameter
 SDL_Surface* getSurfaceImageBy( std::string path )
@@ -153,17 +149,7 @@ int main( int argc, char* args[] )
     {
         printf( "Failed to initialize!\n" );
     }
-    /*
-    else
-    {
-        //Load media
-        if( !loadMedia() )
-        {
-            printf( "Failed to load media!\n" );
-        }
-    }
-    */
-
+    
      //Main loop flag
     bool quit = false;
 
@@ -180,6 +166,7 @@ int main( int argc, char* args[] )
     int mazeTop = 6, mazeBottom = 10;
     // create the maze array
     Maze maze[MAZE_WIDTH][MAZE_HEIGHT];
+    
     // position the maze array
     for (int i = 0; i < MAZE_WIDTH; ++i)
     {
@@ -199,15 +186,7 @@ int main( int argc, char* args[] )
         }
     }
 
-    /*
-    for (int i = 0; i < 10; ++i)
-    {
-        for (int j = 3; j < 6; ++j)
-        {
-            maze[i][j].exist = false;
-        }
-    }
-    */
+   
 
     
     //While application is running
@@ -231,36 +210,31 @@ int main( int argc, char* args[] )
                 quit = true;
             }
           
-          }  
+        }  
                    
                 
-                         
-                if (keys[SDL_SCANCODE_LEFT]){
-                    spaceship.xVel = -1;
-                    spaceship.rect.x += spaceship.xVel
-                        * timeSinceLastLoop / GAME_SPEED;
-                }
-                if (keys[SDL_SCANCODE_RIGHT]){
-
-                  spaceship.xVel = 1;
-                    spaceship.rect.x += spaceship.xVel
-                        * timeSinceLastLoop / GAME_SPEED;
-                }
-                if (keys[SDL_SCANCODE_DOWN]){
-                    spaceship.yVel = 1;
-                     spaceship.rect.y += spaceship.yVel
-                         * timeSinceLastLoop / GAME_SPEED;
-    
-                }
-                if (keys[SDL_SCANCODE_UP]){ 
-               
-                    spaceship.yVel = -1;
-                    spaceship.rect.y += spaceship.yVel
-                        * timeSinceLastLoop / GAME_SPEED;
-
-                }
-                 // update spaceship
+        if (keys[SDL_SCANCODE_LEFT]){
+            spaceship.xVel = -1;
+            spaceship.rect.x += spaceship.xVel * timeSinceLastLoop / GAME_SPEED;
+        }
+                
+        if (keys[SDL_SCANCODE_RIGHT]){
+            spaceship.xVel = 1;
+            spaceship.rect.x += spaceship.xVel * timeSinceLastLoop / GAME_SPEED;
+        }
+                
+        if (keys[SDL_SCANCODE_DOWN]){
+            spaceship.yVel = 1;
+            spaceship.rect.y += spaceship.yVel * timeSinceLastLoop / GAME_SPEED;
+        }
+                
+        if (keys[SDL_SCANCODE_UP]){ 
+            spaceship.yVel = -1;
+            spaceship.rect.y += spaceship.yVel * timeSinceLastLoop / GAME_SPEED;
+        }
+                 
         
+
         
             
          
@@ -346,6 +320,44 @@ int main( int argc, char* args[] )
             }
         }
 
+          for (int i = 0; i < MAZE_WIDTH; ++i)
+        {
+            for (int j = 0; j < MAZE_HEIGHT; ++j)
+            {
+                //if spacechip touch maze[i][j]
+                if(maze[i][j].exist){
+                    
+                    //The sides of the rectangles
+                    int leftMaze, leftSpaceship;
+                    int rightMaze, rightSpaceship;
+                    int topMaze, topSpaceship;
+                    int bottomMaze, bottomSpaceship;
+
+                    //Calculate the sides of the maze
+                    leftMaze = maze[i][j].rect.x;
+                    rightMaze = maze[i][j].rect.x + maze[i][j].rect.w;
+                    topMaze = maze[i][j].rect.y;
+                    bottomMaze = maze[i][j].rect.y + maze[i][j].rect.h;
+
+                    //Calculate the sides of the spaceship
+                    leftSpaceship = spaceship.rect.x;
+                    rightSpaceship = spaceship.rect.x + spaceship.rect.w;
+                    topSpaceship = spaceship.rect.y;
+                    bottomSpaceship = spaceship.rect.y + spaceship.rect.h;
+
+
+                    if((bottomMaze >= topSpaceship) && (leftMaze <= rightSpaceship) && 
+                        (topMaze <=  bottomSpaceship) &&  (rightMaze >= leftSpaceship)){
+                            std::cout << "TOUCH";
+                            //Free resources and close SDL
+                            close();
+                    }
+                    
+
+                }    
+            }
+
+        }    
         /*
         for (int i = 0; i < MAZE_WIDTH; ++i)
         {
