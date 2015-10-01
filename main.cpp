@@ -50,6 +50,24 @@ public:
     int yVel;
 };
 
+class GameOverBoard    
+{
+public:
+    GameOverBoard()
+        : surface(getSurfaceImageBy("gameOver.bmp"))
+    {
+        rect.x = 105;
+        rect.y = 130;
+        rect.w = 100;
+        rect.h = 100;        
+    }
+    
+    SDL_Surface* surface;
+    SDL_Rect rect;
+  
+};
+
+
 class Maze
 {
 public:
@@ -110,9 +128,6 @@ bool init()
 
 void close()
 {
-    
-
-
 
     //Deallocate surface
     SDL_FreeSurface( spaceShipSurface );
@@ -158,6 +173,8 @@ int main( int argc, char* args[] )
 
     // create the spaceship object
     Spaceship spaceship;
+
+    GameOverBoard gameover;
 
     // set how many peices the maze will have
     const int MAZE_WIDTH = 23;
@@ -348,8 +365,23 @@ int main( int argc, char* args[] )
 
                     if((bottomMaze >= topSpaceship) && (leftMaze <= rightSpaceship) && 
                         (topMaze <=  bottomSpaceship) &&  (rightMaze >= leftSpaceship)){
-                            std::cout << "TOUCH";
+                           
+                           
                             //Free resources and close SDL
+                            
+                            
+                            //Deallocate surface 
+                            SDL_FreeSurface( spaceship.surface );
+                            spaceship.surface = NULL;
+
+                            // draw game over board
+                            SDL_BlitSurface( gameover.surface, NULL, screenSurface,
+                                                &gameover.rect );
+
+                            //Update the surface
+                            SDL_UpdateWindowSurface( window );
+
+                            SDL_Delay(3000);
                             close();
                     }
                     
@@ -358,15 +390,7 @@ int main( int argc, char* args[] )
             }
 
         }    
-        /*
-        for (int i = 0; i < MAZE_WIDTH; ++i)
-        {
-            for (int j = mazeTop; j < mazeBottom; ++j)
-            {
-                maze[i][j].exist = false;
-            }
-        }
-        */
+     
 
         // 3 DRAW -------------------------------------------------------------
         
