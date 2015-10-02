@@ -1,6 +1,7 @@
 //This code was based in a code found on the website: http://lazyfoo.net/tutorials/SDL/01_hello_SDL/linux/cli/index.php
 
 #include "SDL2/SDL.h"
+#include <SDL2/SDL_ttf.h>
 #include <iostream>
 #include <ctime>
 #include <cstdlib>
@@ -14,6 +15,12 @@ SDL_Window* window = NULL;
 	
 //The surface contained by the window
 SDL_Surface* screenSurface = NULL;
+
+TTF_Font * font = NULL;
+
+//screenSurface = SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP,
+//                                 SDL_SWSURFACE);
+//screenSurface = SDL_GetWindowSurface( window );
 
 SDL_Surface* getSurfaceImageBy( std::string path );
 bool loadMedia();
@@ -77,6 +84,14 @@ bool init()
     //Initialization flag
     bool success = true;
 
+    /*
+    if (SDL_Init(SDL_INIT_EVERYTHING ) == -1)
+    {
+        success = false;
+        return success;
+    }
+    */
+    
     //Initialize SDL
     if( SDL_Init( SDL_INIT_VIDEO ) < 0 )
     {
@@ -101,6 +116,8 @@ bool init()
             //Get window surface
             screenSurface = SDL_GetWindowSurface( window );
         }
+
+        //font = TTF_OpenFont( "FreeMonoBold.ttf", 28 );
     }
     return success;
 }
@@ -149,6 +166,19 @@ int main( int argc, char* args[] )
     {
         printf( "Failed to initialize!\n" );
     }
+
+
+    //TTF_Font * font = NULL;
+    //TTF_Font * font = TTF_OpenFont( "FreeMonoBold.ttf", 28 );
+
+    /*
+    if (TTF_Init() == -1)
+    {
+        printf( "SDL_ttf could not initialize! SDL_ttf Error: %s\n",
+                TTF_GetError() );
+        //suces = false;
+    }
+    */    
     
      //Main loop flag
     bool quit = false;
@@ -320,7 +350,7 @@ int main( int argc, char* args[] )
             }
         }
 
-          for (int i = 0; i < MAZE_WIDTH; ++i)
+        for (int i = 0; i < MAZE_WIDTH; ++i)
         {
             for (int j = 0; j < MAZE_HEIGHT; ++j)
             {
