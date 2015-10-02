@@ -1,7 +1,7 @@
 //This code was based in a code found on the website: http://lazyfoo.net/tutorials/SDL/01_hello_SDL/linux/cli/index.php
 
-#include "SDL2/SDL.h"
-#include <SDL2/SDL_ttf.h>
+#include "SDL.h"
+#include <SDL_ttf.h>
 #include <iostream>
 #include <ctime>
 #include <cstdlib>
@@ -17,15 +17,10 @@ SDL_Window* window = NULL;
 //The surface contained by the window
 SDL_Surface* screenSurface = NULL;
 
-//SDL_Renderer* gRenderer = NULL;
-
-// for score
-//SDL_Surface* scoreSurface = NULL;
-//int score_color[] = {0, 0, 0};
-
-//screenSurface = SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP,
-//                                 SDL_SWSURFACE);
-//screenSurface = SDL_GetWindowSurface( window );
+// ttf font
+TTF_Font * font = NULL;
+SDL_Surface * score_surface;
+SDL_Rect scoreRect;
 
 SDL_Surface* getSurfaceImageBy( std::string path );
 bool loadMedia();
@@ -94,22 +89,19 @@ public:
     bool exist;
 };
 
-/*
 class Score
 {
 public:
-    Score()
-        : surface(getSurfaceImageBy("gameOver.bmp"))
+    Score()    
     {
-        rect.x = 50;
-        rect.y = 50;
+        rect.x = 25;
+        rect.y = 10;
         rect.w = 50;
         rect.h = 50;
     }
     SDL_Surface* surface;
     SDL_Rect rect;
 };
-*/
 
 const int MAZE_SPEED = 1;
 
@@ -123,13 +115,17 @@ bool init()
     //Initialization flag
     bool success = true;
 
-    
+
+    /*
     if (SDL_Init(SDL_INIT_EVERYTHING ) == -1)
     {
         success = false;
         return success;
     }
-    
+    */
+
+    TTF_Init();
+    font = TTF_OpenFont( "FreeSansBold.ttf", 28 );
     
     //Initialize SDL
     if( SDL_Init( SDL_INIT_VIDEO ) < 0 )
@@ -234,21 +230,8 @@ int main( int argc, char* args[] )
     // create the maze array
     Maze maze[MAZE_WIDTH][MAZE_HEIGHT];
 
-    int score = 0;
-    //TTF_Font * font = NULL;    
-    //font = TTF_OpenFont( "FreeMonoBold.ttf", 28 );  
-    //SDL_Color score_color = {255, 255, 255};
-
-    //SDL_Surface *background = NULL;
-    //background = getSurfaceImageBy("gameOver.bmp");
-    //SDL_Surface *message = NULL;
-    
-    //Score scoreObj;
-    //SDL_Rect scoreRect;
-    //scoreRect.rect.x = 50;
-    //scoreRect.rect.y = 50;
-    //scoreRect.rect.w = 50;
-    //scoreRect.rect.h = 50;
+    int score = 0;    
+    Score scoreObj;
     
     // position the maze array
     for (int i = 0; i < MAZE_WIDTH; ++i)
@@ -354,14 +337,14 @@ int main( int argc, char* args[] )
                     case 0:
                         while (rand() % 2 == 0)
                         {
-                            if (mazeBottom - mazeTop > 4)
+                            if (mazeBottom - mazeTop > 5)
                                 ++mazeTop;
                         }
                         break;
                     case 1:
                         while (rand() % 2 == 0)
                         {
-                            if (mazeBottom - mazeTop < 6
+                            if (mazeBottom - mazeTop < 8
                                 && mazeTop > 1)
                                 --mazeTop;
                         }
@@ -369,14 +352,14 @@ int main( int argc, char* args[] )
                     case 2:
                         while (rand() % 2 == 0)
                         {       
-                            if (mazeBottom - mazeTop > 4)
+                            if (mazeBottom - mazeTop > 5)
                                 --mazeBottom;
                         }
                         break;
                     case 3:                        
                         while (rand() % 2 == 0)
                         {
-                            if (mazeBottom - mazeTop < 6
+                            if (mazeBottom - mazeTop < 8
                                 && mazeBottom < MAZE_HEIGHT - 1)
                                 ++mazeBottom;
                         }
@@ -479,35 +462,26 @@ int main( int argc, char* args[] )
         SDL_BlitSurface( spaceship.surface, NULL, screenSurface,
                          &spaceship.rect );
 
-        // draw score
-        TTF_Font * font = NULL;    
-        font = TTF_OpenFont( "FreeMonoBold.ttf", 28 );  
-        SDL_Color score_color = {255, 255, 255};
-        SDL_Surface *score_surface = TTF_RenderText_Solid(
+        // draw score        
+        SDL_Color score_color = {0, 255, 0};
+        scoreObj.surface = TTF_RenderText_Solid(
             font,
             std::to_string(score).c_str(),
             score_color);
-        SDL_BlitSurface(score_surface, NULL, screenSurface, NULL);
         
-        //message = TTF_RenderText_Shaded(font, "Hello world", score_color);
-        //apply_surface(0, 0, background, screenSurface);
-        //SDL_FillRect(scoreObj.surface, NULL, 0x000000);
-        //SDL_Color score_color = {0, 0, 0};
-        //SDL_Surface *score_surface = TTF_RenderText_Solid(
-        //scoreObj.surface = TTF_RenderText_Solid(
-        //    font,
-        //    "The quick", //std::to_string(score).c_str(),
-        //    score_color);        
-        //SDL_BlitSurface( background, NULL, screenSurface,
-        //                 NULL );
-        //SDL_BlitSurface( message, NULL, spaceship.surface,
-        //                 &spaceship.rect );
-        //apply_surface(0, 0, background, screenSurface);
-        //SDL_FreeSurface(scoreObj.surface);
+        SDL_BlitSurface(scoreObj.surface, NULL, screenSurface,
+                        &scoreObj.rect);
+
+        /*
+        if (font == NULL)
+        {
+            std::cout << "error" << std::endl;
+            std::cout << TTF_GetError() << std::endl;
+        }
+        */
         
         //Update the surface
         SDL_UpdateWindowSurface( window );
-        //SDL_Flip(screenSurface);
     }
      
     //Free resources and close SDL
