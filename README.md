@@ -12,4 +12,6 @@ To run the game type:
 3. so, to compile the game type `make`
 4. Finally, to run the game type `./main`
 
+SDL2 TTF is used and must be installed
+
 ### **Instructions Playing the Game**
