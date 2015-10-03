@@ -230,7 +230,9 @@ int main( int argc, char* args[] )
     // create the maze array
     Maze maze[MAZE_WIDTH][MAZE_HEIGHT];
 
-    int score = 0;    
+    int score = 0;
+    int distance = 0;
+    int SCORE_RATE = 16;
     Score scoreObj;
     
     // position the maze array
@@ -314,6 +316,13 @@ int main( int argc, char* args[] )
                         * timeSinceLastLoop / GAME_SPEED;
             }
         }
+
+        // if we are moving sum up the distance and use to determine the score
+        if (spaceship.xVel != 0)
+        {
+            ++distance;
+        }
+        score = distance / SCORE_RATE;
         
         // determine maze right edge
         mazeRightEdge = maze[0][0].rect.x;
@@ -437,8 +446,7 @@ int main( int argc, char* args[] )
 
         }
 
-        ++score;
-        std::cout << score << std::endl;
+        //++score;
      
 
         // 3 DRAW -------------------------------------------------------------
