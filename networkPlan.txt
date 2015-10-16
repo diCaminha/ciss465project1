@@ -1,0 +1,12 @@
+Denis & David
+CCIS465 Project 2
+Network Plan
+
+Calculate maze on server
+Every time a row of blocks jumps back send a signal to the client to tell client where the maze should be.
+
+Calculate input for server on server side. Calculate input for client on client side.
+Send server ship position to client. Send client ship position to server.
+Calculate if server ship dies on server side. Calculate if client dies on client side.
+
+In sum, the only information that is sent is maze position from server to client, and ship position from server to client and from client to server.
