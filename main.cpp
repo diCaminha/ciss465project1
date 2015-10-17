@@ -17,11 +17,6 @@ SDL_Window* window = NULL;
 //The surface contained by the window
 SDL_Surface* screenSurface = NULL;
 
-// ttf font
-TTF_Font * font = NULL;
-SDL_Surface * score_surface;
-SDL_Rect scoreRect;
-
 SDL_Surface* getSurfaceImageBy( std::string path );
 bool loadMedia();
 
@@ -73,7 +68,6 @@ public:
     SDL_Rect rect;  
 };
 
-
 class Maze
 {
 public:
@@ -101,31 +95,26 @@ public:
     }
     SDL_Surface* surface;
     SDL_Rect rect;
+    TTF_Font * font = NULL;
 };
 
 const int MAZE_SPEED = 1;
 
-//The image we will load and show on the screen
-SDL_Surface* spaceShipSurface = NULL;
+// ttf font
 
+//SDL_Surface * score_surface;
+//SDL_Rect scoreRect;
+
+//The image we will load and show on the screen
+//SDL_Surface* spaceShipSurface = NULL;
 
 bool init()
-{
-    
+{    
     //Initialization flag
     bool success = true;
 
-
-    /*
-    if (SDL_Init(SDL_INIT_EVERYTHING ) == -1)
-    {
-        success = false;
-        return success;
-    }
-    */
-
+    // prepare text
     TTF_Init();
-    font = TTF_OpenFont( "FreeSansBold.ttf", 28 );
     
     //Initialize SDL
     if( SDL_Init( SDL_INIT_VIDEO ) < 0 )
@@ -155,16 +144,12 @@ bool init()
     return success;
 }
 
-
-
-
 void close()
 {
-
     //Deallocate surface
-    SDL_FreeSurface( spaceShipSurface );
-    spaceShipSurface = NULL;
-
+    //SDL_FreeSurface( spaceShipSurface );
+    //spaceShipSurface = NULL;
+   
     //Destroy window
     SDL_DestroyWindow( window );
     window = NULL;
@@ -173,13 +158,9 @@ void close()
     SDL_Quit();
 }
 
-
-
 //Function that load surfaces by the path of the image in the parameter
 SDL_Surface* getSurfaceImageBy( std::string path )
-{
-    
-   
+{   
     //getting a surface from a specific path, passed by parameter
     SDL_Surface* surface = SDL_LoadBMP( path.c_str());
     
@@ -188,30 +169,19 @@ SDL_Surface* getSurfaceImageBy( std::string path )
 
 int main( int argc, char* args[] )
 {
+    // seed random
     srand((unsigned int) time(NULL));
 
+    // set up key state
     const Uint8 *keys = SDL_GetKeyboardState(NULL); 
+
     //Start up SDL and create window
     if( !init() )
     {
         printf( "Failed to initialize!\n" );
     }
-
-    //TTF_Font * font = NULL;
-    //TTF_Font * font = TTF_OpenFont( "FreeMonoBold.ttf", 28 );
-
-    SDL_Texture* mTexture;
-
-    /*
-    if (TTF_Init() == -1)
-    {
-        printf( "SDL_ttf could not initialize! SDL_ttf Error: %s\n",
-                TTF_GetError() );
-        //suces = false;
-    }
-    */    
     
-     //Main loop flag
+    //Main loop flag
     bool quit = false;
 
     //Event handler
@@ -220,20 +190,23 @@ int main( int argc, char* args[] )
     // create the spaceship object
     Spaceship spaceship;
 
+    // create the gameover object
     GameOverBoard gameover;
 
-    // set how many peices the maze will have
+    // set up score
+    int score = 0;
+    int distance = 0;
+    int SCORE_RATE = 16;
+    Score scoreObj;
+    scoreObj.font = TTF_OpenFont( "FreeSansBold.ttf", 28 );
+
+    // maze
     const int MAZE_WIDTH = 23;
     const int MAZE_HEIGHT = 16;
     int mazeRightEdge;
     int mazeTop = 6, mazeBottom = 10;
     // create the maze array
     Maze maze[MAZE_WIDTH][MAZE_HEIGHT];
-
-    int score = 0;
-    int distance = 0;
-    int SCORE_RATE = 16;
-    Score scoreObj;
     
     // position the maze array
     for (int i = 0; i < MAZE_WIDTH; ++i)
@@ -252,19 +225,20 @@ int main( int argc, char* args[] )
         {
             maze[i][j].exist = false;
         }
-    }   
+    }
+
+    // variables that will help us keep track of loop time
+    int totalTime, timeSinceLastLoop, oldTotalTime;
     
     //While application is running
     while( !quit )
     {
         // 1 INPUT ------------------------------------------------------------
         
-        //Uint32 totalTime, timeSinceLastLoop, oldTotalTime;
-        int totalTime, timeSinceLastLoop, oldTotalTime;
+        // keep track of loop time
         totalTime = SDL_GetTicks();
         timeSinceLastLoop = totalTime - oldTotalTime;            
         oldTotalTime = totalTime;
-        //std::cout << timeSinceLastLoop << std::endl;
         
         //Handle events on queue
         while( SDL_PollEvent( &e ) != 0 )
@@ -273,11 +247,10 @@ int main( int argc, char* args[] )
             if( e.type == SDL_QUIT )
             {
                 quit = true;
-            }
-          
-        }  
-                   
-                
+            }          
+        }
+
+        // key input with scancode
         if (keys[SDL_SCANCODE_LEFT]){
             spaceship.xVel = -1;
             spaceship.rect.x += spaceship.xVel * timeSinceLastLoop / GAME_SPEED;
@@ -297,14 +270,7 @@ int main( int argc, char* args[] )
             spaceship.yVel = -1;
             spaceship.rect.y += spaceship.yVel * timeSinceLastLoop / GAME_SPEED;
         }
-                 
         
-
-        
-            
-         
-    
-
         // 2 UPDATE -----------------------------------------------------------
        
         // move maze
@@ -313,7 +279,7 @@ int main( int argc, char* args[] )
             for (int j = 0; j < MAZE_HEIGHT; ++j)
             {
                 maze[i][j].rect.x -= std::abs(spaceship.xVel)
-                        * timeSinceLastLoop / GAME_SPEED;
+                    * timeSinceLastLoop / GAME_SPEED;
             }
         }
 
@@ -357,7 +323,7 @@ int main( int argc, char* args[] )
                                 && mazeTop > 1)
                                 --mazeTop;
                         }
-                        break;                        
+                        break;
                     case 2:
                         while (rand() % 2 == 0)
                         {       
@@ -372,7 +338,7 @@ int main( int argc, char* args[] )
                                 && mazeBottom < MAZE_HEIGHT - 1)
                                 ++mazeBottom;
                         }
-                        break;                        
+                        break;
                 }
 
                 // update the maze based on changes in mazeTop/mazeBottom
@@ -387,11 +353,11 @@ int main( int argc, char* args[] )
                     {
                         maze[i][j].exist = true;
                     }
-                    //maze[0][0].rect.w * (MAZE_WIDTH - 2);
                 }
             }
         }
 
+        // check for ship collision with maze
         for (int i = 0; i < MAZE_WIDTH; ++i)
         {
             for (int j = 0; j < MAZE_HEIGHT; ++j)
@@ -418,36 +384,27 @@ int main( int argc, char* args[] )
                     bottomSpaceship = spaceship.rect.y + spaceship.rect.h;
 
 
-                    if((bottomMaze >= topSpaceship) && (leftMaze <= rightSpaceship) && 
-                        (topMaze <=  bottomSpaceship) &&  (rightMaze >= leftSpaceship)){
-                           
-                           
-                            //Free resources and close SDL
-                            
-                            
-                            //Deallocate surface 
-                            SDL_FreeSurface( spaceship.surface );
-                            spaceship.surface = NULL;
+                    if((bottomMaze >= topSpaceship)
+                       && (leftMaze <= rightSpaceship)
+                       && (topMaze <=  bottomSpaceship)
+                       && (rightMaze >= leftSpaceship))
+                    {                        
+                        // draw game over board
+                        SDL_BlitSurface( gameover.surface, NULL,
+                                         screenSurface, &gameover.rect );
+                        
+                        //Update the surface
+                        SDL_UpdateWindowSurface( window );
+                        
+                        // wait and then close
+                        SDL_Delay(3000);
 
-                            // draw game over board
-                            SDL_BlitSurface( gameover.surface, NULL, screenSurface,
-                                                &gameover.rect );
-
-                            //Update the surface
-                            SDL_UpdateWindowSurface( window );
-
-                            SDL_Delay(3000);
-                            close();
-                    }
-                    
-
+                        // set quit to true so loop will exit on next iteration
+                        quit = true;
+                    }                    
                 }    
             }
-
-        }
-
-        //++score;
-     
+        }     
 
         // 3 DRAW -------------------------------------------------------------
         
@@ -473,24 +430,34 @@ int main( int argc, char* args[] )
         // draw score        
         SDL_Color score_color = {0, 255, 0};
         scoreObj.surface = TTF_RenderText_Solid(
-            font,
+            scoreObj.font,
             std::to_string(score).c_str(),
             score_color);
         
         SDL_BlitSurface(scoreObj.surface, NULL, screenSurface,
                         &scoreObj.rect);
-
-        /*
-        if (font == NULL)
-        {
-            std::cout << "error" << std::endl;
-            std::cout << TTF_GetError() << std::endl;
-        }
-        */
         
         //Update the surface
         SDL_UpdateWindowSurface( window );
     }
+
+    //Deallocate surfaces    
+    SDL_FreeSurface( spaceship.surface );
+    spaceship.surface = NULL;
+    SDL_FreeSurface( gameover.surface );
+    gameover.surface = NULL;
+    SDL_FreeSurface( screenSurface );
+    screenSurface = NULL;
+    for (int i = 0; i < MAZE_WIDTH; ++i)
+    {
+        for (int j = 0; j < MAZE_HEIGHT; ++j)
+        {            
+            SDL_FreeSurface(maze[i][j].surface);
+            maze[i][j].surface = NULL;
+        }
+    }
+    SDL_FreeSurface(scoreObj.surface);
+    scoreObj.surface = NULL;    
      
     //Free resources and close SDL
     close();
