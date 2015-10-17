@@ -6,6 +6,7 @@
 #include <ctime>
 #include <cstdlib>
 #include <string>
+#include "classes.h"
 
 //Screen dimension constants
 const int SCREEN_WIDTH = 640;
@@ -17,96 +18,62 @@ SDL_Window* window = NULL;
 //The surface contained by the window
 SDL_Surface* screenSurface = NULL;
 
-SDL_Surface* getSurfaceImageBy( std::string path );
-bool loadMedia();
-
 // set game speed devider (which means the lower the number the faster
 // everything will move
 const int GAME_SPEED = 3;
 
-// set the size for all the blocks in the game
-const int BLOCK_WIDTH = 30;
-
-// spaceship class
-// contains an surface which is initialized in the contructor by calling
-// getSurfaceImageBy
-// contains a rect, with x, y, w, h (I didn't bother with looking into
-// calling the super constructor)
-// contains xVel, yVel to make movement smoother
-class Spaceship    
-{
-public:
-    Spaceship()
-        : surface(getSurfaceImageBy("spaceship.bmp")),
-          xVel(0), yVel(0)
+int determineMazeRightEdge(Maze maze[MAZE_WIDTH][MAZE_HEIGHT])
+{    
+    int mazeRightEdge = maze[0][0].rect.x;
+    for (int i = 1; i < MAZE_WIDTH; ++i)
     {
-        rect.x = 305;
-        rect.y = 225;
-        rect.w = 10;
-        rect.h = 10;        
+        if (maze[i][0].rect.x + BLOCK_WIDTH > mazeRightEdge)
+            mazeRightEdge = maze[i][0].rect.x + BLOCK_WIDTH;
     }
-    
-    SDL_Surface* surface;
-    SDL_Rect rect;
-    int xVel;
-    int yVel;
-};
+    return mazeRightEdge;
+}
 
-class GameOverBoard    
+// check for ship collision with maze
+bool shipMazeCollision(Spaceship spaceship,
+                       Maze maze[MAZE_WIDTH][MAZE_HEIGHT])
 {
-public:
-    GameOverBoard()
-        : surface(getSurfaceImageBy("gameOver.bmp"))
+    for (int i = 0; i < MAZE_WIDTH; ++i)
     {
-        rect.x = 105;
-        rect.y = 130;
-        rect.w = 100;
-        rect.h = 100;        
+        for (int j = 0; j < MAZE_HEIGHT; ++j)
+        {
+            //if spacechip touch maze[i][j]
+            if(maze[i][j].exist){
+                    
+                //The sides of the rectangles
+                int leftMaze, leftSpaceship;
+                int rightMaze, rightSpaceship;
+                int topMaze, topSpaceship;
+                int bottomMaze, bottomSpaceship;
+
+                //Calculate the sides of the maze
+                leftMaze = maze[i][j].rect.x;
+                rightMaze = maze[i][j].rect.x + maze[i][j].rect.w;
+                topMaze = maze[i][j].rect.y;
+                bottomMaze = maze[i][j].rect.y + maze[i][j].rect.h;
+
+                //Calculate the sides of the spaceship
+                leftSpaceship = spaceship.rect.x;
+                rightSpaceship = spaceship.rect.x + spaceship.rect.w;
+                topSpaceship = spaceship.rect.y;
+                bottomSpaceship = spaceship.rect.y + spaceship.rect.h;
+                
+                if ((bottomMaze >= topSpaceship)
+                    && (leftMaze <= rightSpaceship)
+                    && (topMaze <=  bottomSpaceship)
+                    && (rightMaze >= leftSpaceship))
+                {
+                    return true;
+                }
+            }    
+        }
     }
-    
-    SDL_Surface* surface;
-    SDL_Rect rect;  
-};
-
-class Maze
-{
-public:
-    Maze()        
-        : surface(getSurfaceImageBy("maze.bmp")), exist(true)
-    {
-        rect.w = BLOCK_WIDTH;
-        rect.h = BLOCK_WIDTH;
-    }
-    
-    SDL_Surface* surface;
-    SDL_Rect rect;
-    bool exist;
-};
-
-class Score
-{
-public:
-    Score()    
-    {
-        rect.x = 25;
-        rect.y = 10;
-        rect.w = 50;
-        rect.h = 50;
-    }
-    SDL_Surface* surface;
-    SDL_Rect rect;
-    TTF_Font * font = NULL;
-};
-
-const int MAZE_SPEED = 1;
-
-// ttf font
-
-//SDL_Surface * score_surface;
-//SDL_Rect scoreRect;
-
-//The image we will load and show on the screen
-//SDL_Surface* spaceShipSurface = NULL;
+    return false;
+}
 
 bool init()
 {    
@@ -145,11 +112,7 @@ bool init()
 }
 
 void close()
-{
-    //Deallocate surface
-    //SDL_FreeSurface( spaceShipSurface );
-    //spaceShipSurface = NULL;
-   
+{  
     //Destroy window
     SDL_DestroyWindow( window );
     window = NULL;
@@ -201,8 +164,6 @@ int main( int argc, char* args[] )
     scoreObj.font = TTF_OpenFont( "FreeSansBold.ttf", 28 );
 
     // maze
-    const int MAZE_WIDTH = 23;
-    const int MAZE_HEIGHT = 16;
     int mazeRightEdge;
     int mazeTop = 6, mazeBottom = 10;
     // create the maze array
@@ -273,6 +234,13 @@ int main( int argc, char* args[] )
         
         // 2 UPDATE -----------------------------------------------------------
        
+        // if we are moving sum up the distance and use to determine the score
+        if (spaceship.xVel != 0)
+        {
+            ++distance;
+        }
+        score = distance / SCORE_RATE;
+        
         // move maze
         for (int i = 0; i < MAZE_WIDTH; ++i)
         {
@@ -282,23 +250,11 @@ int main( int argc, char* args[] )
                     * timeSinceLastLoop / GAME_SPEED;
             }
         }
-
-        // if we are moving sum up the distance and use to determine the score
-        if (spaceship.xVel != 0)
-        {
-            ++distance;
-        }
-        score = distance / SCORE_RATE;
         
         // determine maze right edge
-        mazeRightEdge = maze[0][0].rect.x;
-        for (int i = 1; i < MAZE_WIDTH; ++i)
-        {
-            if (maze[i][0].rect.x + BLOCK_WIDTH > mazeRightEdge)
-                mazeRightEdge = maze[i][0].rect.x + BLOCK_WIDTH;
-        }
+        mazeRightEdge = determineMazeRightEdge(maze);
 
-        // if maze touches wall        
+        // if maze touches wall
         for (int i = 0; i < MAZE_WIDTH; ++i)
         {
             if (maze[i][0].rect.x < 0)
@@ -353,58 +309,26 @@ int main( int argc, char* args[] )
                     {
                         maze[i][j].exist = true;
                     }
-                }
+                }                
             }
         }
 
         // check for ship collision with maze
-        for (int i = 0; i < MAZE_WIDTH; ++i)
-        {
-            for (int j = 0; j < MAZE_HEIGHT; ++j)
-            {
-                //if spacechip touch maze[i][j]
-                if(maze[i][j].exist){
-                    
-                    //The sides of the rectangles
-                    int leftMaze, leftSpaceship;
-                    int rightMaze, rightSpaceship;
-                    int topMaze, topSpaceship;
-                    int bottomMaze, bottomSpaceship;
-
-                    //Calculate the sides of the maze
-                    leftMaze = maze[i][j].rect.x;
-                    rightMaze = maze[i][j].rect.x + maze[i][j].rect.w;
-                    topMaze = maze[i][j].rect.y;
-                    bottomMaze = maze[i][j].rect.y + maze[i][j].rect.h;
-
-                    //Calculate the sides of the spaceship
-                    leftSpaceship = spaceship.rect.x;
-                    rightSpaceship = spaceship.rect.x + spaceship.rect.w;
-                    topSpaceship = spaceship.rect.y;
-                    bottomSpaceship = spaceship.rect.y + spaceship.rect.h;
-
-
-                    if((bottomMaze >= topSpaceship)
-                       && (leftMaze <= rightSpaceship)
-                       && (topMaze <=  bottomSpaceship)
-                       && (rightMaze >= leftSpaceship))
-                    {                        
-                        // draw game over board
-                        SDL_BlitSurface( gameover.surface, NULL,
-                                         screenSurface, &gameover.rect );
-                        
-                        //Update the surface
-                        SDL_UpdateWindowSurface( window );
-                        
-                        // wait and then close
-                        SDL_Delay(3000);
-
-                        // set quit to true so loop will exit on next iteration
-                        quit = true;
-                    }                    
-                }    
-            }
-        }     
+        if (shipMazeCollision(spaceship, maze))
+        {            
+            // draw game over board
+            SDL_BlitSurface( gameover.surface, NULL,
+                             screenSurface, &gameover.rect );
+            
+            //Update the surface
+            SDL_UpdateWindowSurface( window );
+            
+            // wait and then close
+            SDL_Delay(3000);
+            
+            // set quit to true so loop will exit on next iteration
+            quit = true;
+        }        
 
         // 3 DRAW -------------------------------------------------------------
         
