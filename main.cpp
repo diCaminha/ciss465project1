@@ -1,16 +1,27 @@
 //This code was based in a code found on the website: http://lazyfoo.net/tutorials/SDL/01_hello_SDL/linux/cli/index.php
 
-#include "SDL.h"
 #include <SDL_ttf.h>
 #include <iostream>
 #include <ctime>
 #include <cstdlib>
 #include <string>
 #include "classes.h"
+#include "SDL.h"
+#include "SDL_net.h"
 
+using std::cout;
+using std::cerr;
+using std::endl;
+
+
+
+//################### GAME CONFIGUTATIONS ##############################333
 //Screen dimension constants
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
+
+ // set up key state
+const Uint8 *keys = SDL_GetKeyboardState(NULL); 
 
 //The window we'll be rendering to
 SDL_Window* window = NULL;
@@ -129,14 +140,63 @@ SDL_Surface* getSurfaceImageBy( std::string path )
     
     return surface;
 }
+//######################################################################
 
-int main( int argc, char* args[] )
+
+
+
+
+//############ NETWORKING CONFIGUTATIONS #####################
+
+// A programs communicating via the network must agree on which port they
+// will use. The computer uses the port number to know which program network
+// messages are being sent to.
+
+const int PORT = 3750;
+
+// The client and server will send each other messages. 1 means "I pressed
+// left," 0 means "I pressed right."
+
+const int LEFT = 1;
+const int RIGHT = 0;
+
+// Prototypes for server and client functions.
+
+void beTheServer();
+void beTheClient(const char servername[]);
+
+
+//###############################################
+
+
+
+int main( int argc, char* argv[] )
 {
+    
+    // Is this program the host, or the client?
+    bool operating_as_host;
+
+    // Check the command line arguments.
+    if (argc == 1)
+    {
+        operating_as_host = true;
+        cout << "Operating as host: clients connect to me." << endl;
+    }
+    else if (argc == 2)
+    {
+        operating_as_host = false;
+        cout << "Operating as client, connecting to " << argv[1] << endl;
+    }
+    else
+    {
+        cerr << "Too many command line arguments" << endl;
+        return 1;
+    }    
+
     // seed random
     srand((unsigned int) time(NULL));
 
-    // set up key state
-    const Uint8 *keys = SDL_GetKeyboardState(NULL); 
+   
 
     //Start up SDL and create window
     if( !init() )
@@ -144,7 +204,151 @@ int main( int argc, char* args[] )
         printf( "Failed to initialize!\n" );
     }
     
-    //Main loop flag
+    if (operating_as_host)
+        beTheServer();
+    else
+        beTheClient(argv[1]);
+    
+    // Shut everything down.
+    SDLNet_Quit();
+    SDL_Quit();
+
+    return 0;
+}
+   
+void beTheClient(const char servername[])
+{
+    /*
+    // Make a window to receive input
+    SDL_Window *win = SDL_CreateWindow("Client", SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED, 200, 100, 0);
+    */
+
+    // Connection information
+    IPaddress ip;
+
+    // Resolve the argument into an IPaddress
+    if (SDLNet_ResolveHost(&ip, servername, PORT) == -1)
+    {
+        cerr << "SDLNet_ResolveHost: " << SDLNet_GetError() << endl;
+        return;
+    }
+
+    // Open a socket to communicate with the server
+    TCPsocket sock = SDLNet_TCP_Open(&ip);
+    if(!sock)
+    {
+        cerr << "SDLNet_TCP_Open: " << SDLNet_GetError() << endl;
+        return;
+    }
+
+    // Create a "socket set" with the new socket, so that you can check
+    // to see if the server has sent anything.
+
+    SDLNet_SocketSet set = SDLNet_AllocSocketSet(1);
+    if(!set)
+        cerr << "SDLNet_AllocSocketSet: " << SDLNet_GetError() << endl;
+    else
+    {
+        if (SDLNet_TCP_AddSocket(set, sock) == -1)
+            cerr << "SDLNet_AddSocket: " << SDLNet_GetError() << endl;
+    }
+
+    // Main client loop
+
+    bool quit = false;
+    while (!quit)
+    {
+        SDL_Event event;
+        bool send_something = false;
+        int message;
+
+        /*
+        while (SDL_PollEvent(&event))
+        {
+            if (event.type == SDL_QUIT)
+                quit = true;
+            else if (event.type == SDL_KEYDOWN)
+            {
+                send_something = false;
+                switch (event.key.keysym.sym)
+                {
+                    case SDLK_LEFT:
+                        send_something = true;
+                        message = LEFT;
+                        break;
+                    case SDLK_RIGHT:
+                        send_something = true;
+                        message = RIGHT;
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        */
+
+        if (send_something)
+        {
+            int sent = SDLNet_TCP_Send(sock, &message, sizeof(message));
+            if (sent != sizeof(message))
+                cerr << "SDLNet_TCP_Send: " << SDLNet_GetError() << endl;
+        }
+
+        while (SDLNet_CheckSockets(set, 0))
+        {
+            int got = SDLNet_TCP_Recv(sock, &message, sizeof(message));
+            if (got <= 0)
+            {
+                cerr << "Connection problem, quitting..." << endl;
+                return;
+            }
+
+            cout << message << endl;
+        }
+
+        // Because our loop doesn't do much, wait a bit before going again,
+        // to keep from overwhelming the CPU.
+        SDL_Delay(50);
+    }
+
+    SDLNet_TCP_Close(sock);
+
+}
+
+
+void beTheServer()
+{
+    /*
+    // Make a window to receive input
+    SDL_Window *win = SDL_CreateWindow("Server", SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED, 200, 100, 0);
+    */
+
+    // Connection information
+    IPaddress ip;
+
+    if (SDLNet_ResolveHost(&ip, NULL, PORT) == -1)
+    {
+        cerr << "SDLNet_ResolveHost: " << SDLNet_GetError() << endl;
+        return;
+    }
+
+    // Open the socket to listen for connections from the client
+    TCPsocket listener = SDLNet_TCP_Open(&ip);
+    if(!listener)
+    {
+        cerr << "SDLNet_TCP_Open: " << SDLNet_GetError() << endl;
+        return;
+    }
+
+    // Prepare a SocketSet so we can check for messages from the client
+    SDLNet_SocketSet set = SDLNet_AllocSocketSet(1);
+
+    // Main server loop
+
+    
+     //Main loop flag
     bool quit = false;
 
     //Event handler
@@ -191,9 +395,19 @@ int main( int argc, char* args[] )
     // variables that will help us keep track of loop time
     int totalTime, timeSinceLastLoop, oldTotalTime;
     
+     TCPsocket client = 0;
+
+    
     //While application is running
     while( !quit )
     {
+       
+        bool send_something = false;
+        //As a test: Trying to send the spaceship x position to the Client
+        //but it's not working yet.
+        int message = spaceship.rect.x;
+
+
         // 1 INPUT ------------------------------------------------------------
         
         // keep track of loop time
@@ -215,11 +429,15 @@ int main( int argc, char* args[] )
         if (keys[SDL_SCANCODE_LEFT]){
             spaceship.xVel = -1;
             spaceship.rect.x += spaceship.xVel * timeSinceLastLoop / GAME_SPEED;
+            message = spaceship.rect.x;
+            send_something = true;
         }
                 
         if (keys[SDL_SCANCODE_RIGHT]){
             spaceship.xVel = 1;
             spaceship.rect.x += spaceship.xVel * timeSinceLastLoop / GAME_SPEED;
+            message = spaceship.rect.x;
+            send_something = true;
         }
                 
         if (keys[SDL_SCANCODE_DOWN]){
@@ -363,6 +581,54 @@ int main( int argc, char* args[] )
         
         //Update the surface
         SDL_UpdateWindowSurface( window );
+    
+
+        // If the client socket is still NULL, no-one has connected yet.
+        // Check to see if someone wants to connect.
+
+        if (client == 0)
+        {
+            client = SDLNet_TCP_Accept(listener);
+
+            // If it isn't zero any more, the client socket is now connected.
+            // Add it to the SocketSet so that we can check it for data later.
+
+            if (client != 0)
+                if (SDLNet_TCP_AddSocket(set, client) == -1)
+                    cerr << "SDLNet_AddSocket: " << SDLNet_GetError() << endl;
+        }
+
+        // If we're connected to a client, we may have data to send, and we
+        // should check to see if they've sent any data to us.
+
+        if (client != 0)
+        {
+            if (send_something)
+            {
+                int sent = SDLNet_TCP_Send(client, &message, sizeof(message));
+                if (sent != sizeof(message))
+                    cerr << "SDLNet_TCP_Send: " << SDLNet_GetError() << endl;
+            }
+
+            while (SDLNet_CheckSockets(set, 0))
+            {
+                int got = SDLNet_TCP_Recv(client, &message, sizeof(message));
+                if (got <= 0)
+                {
+                    cerr << "Connection problem, quitting..." << endl;
+                    return;
+                }
+
+                if (message == LEFT)
+                    cout << "Client pressed left" << endl;
+                else if (message == RIGHT)
+                    cout << "Client pressed right" << endl;
+                else
+                    cerr << "Client sent an unknown message" << endl;
+            }
+        }
+
+
     }
 
     //Deallocate surfaces    
@@ -384,7 +650,18 @@ int main( int argc, char* args[] )
     scoreObj.surface = NULL;    
      
     //Free resources and close SDL
-    close();
+    close();    
 
-    return 0;
+   
+
+        
+        // Because our loop doesn't do much, wait a bit before going again,
+        // to keep from overwhelming the CPU.
+        SDL_Delay(50);
+    
+
+    SDLNet_TCP_Close(listener);
+    SDLNet_TCP_Close(client);
+
 }
+
