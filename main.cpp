@@ -218,14 +218,14 @@ int main( int argc, char* argv[] )
    
 void beTheClient(const char servername[])
 {
-    /*
-    // Make a window to receive input
-    SDL_Window *win = SDL_CreateWindow("Client", SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED, 200, 100, 0);
-    */
-
+ 
     // Connection information
     IPaddress ip;
+
+    //As a test: Trying to send the spaceship x position to the Client
+    //but it's not working yet.
+    int serverSpaceship_x;
+    int serverSpaceship_y;
 
     // Resolve the argument into an IPaddress
     if (SDLNet_ResolveHost(&ip, servername, PORT) == -1)
@@ -261,50 +261,29 @@ void beTheClient(const char servername[])
     {
         SDL_Event event;
         bool send_something = false;
-        int message;
+        int clientSpaceship_X;
+        int clientSpaceship_Y;
+        int serverSpaceship_x;
+        int serverSpaceship_y;
 
-        /*
-        while (SDL_PollEvent(&event))
-        {
-            if (event.type == SDL_QUIT)
-                quit = true;
-            else if (event.type == SDL_KEYDOWN)
-            {
-                send_something = false;
-                switch (event.key.keysym.sym)
-                {
-                    case SDLK_LEFT:
-                        send_something = true;
-                        message = LEFT;
-                        break;
-                    case SDLK_RIGHT:
-                        send_something = true;
-                        message = RIGHT;
-                        break;
-                    default:
-                        break;
-                }
-            }
-        }
-        */
-
+        
         if (send_something)
         {
-            int sent = SDLNet_TCP_Send(sock, &message, sizeof(message));
-            if (sent != sizeof(message))
+            int sent = SDLNet_TCP_Send(sock, &clientSpaceship_X, sizeof(clientSpaceship_X));
+            if (sent != sizeof(clientSpaceship_X))
                 cerr << "SDLNet_TCP_Send: " << SDLNet_GetError() << endl;
         }
 
         while (SDLNet_CheckSockets(set, 0))
         {
-            int got = SDLNet_TCP_Recv(sock, &message, sizeof(message));
+            int got = SDLNet_TCP_Recv(sock, &serverSpaceship_x, sizeof(serverSpaceship_x));
             if (got <= 0)
             {
                 cerr << "Connection problem, quitting..." << endl;
                 return;
             }
 
-            cout << message << endl;
+            cout << serverSpaceship_x << endl;
         }
 
         // Because our loop doesn't do much, wait a bit before going again,
@@ -319,11 +298,7 @@ void beTheClient(const char servername[])
 
 void beTheServer()
 {
-    /*
-    // Make a window to receive input
-    SDL_Window *win = SDL_CreateWindow("Server", SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED, 200, 100, 0);
-    */
+   
 
     // Connection information
     IPaddress ip;
@@ -405,8 +380,8 @@ void beTheServer()
         bool send_something = false;
         //As a test: Trying to send the spaceship x position to the Client
         //but it's not working yet.
-        int message = spaceship.rect.x;
-
+        int serverSpaceship_x = spaceship.rect.x;
+        int serverSpaceship_y = spaceship.rect.y;
 
         // 1 INPUT ------------------------------------------------------------
         
@@ -429,25 +404,29 @@ void beTheServer()
         if (keys[SDL_SCANCODE_LEFT]){
             spaceship.xVel = -1;
             spaceship.rect.x += spaceship.xVel * timeSinceLastLoop / GAME_SPEED;
-            message = spaceship.rect.x;
+            serverSpaceship_x = spaceship.rect.x;
             send_something = true;
         }
                 
         if (keys[SDL_SCANCODE_RIGHT]){
             spaceship.xVel = 1;
             spaceship.rect.x += spaceship.xVel * timeSinceLastLoop / GAME_SPEED;
-            message = spaceship.rect.x;
+            serverSpaceship_x = spaceship.rect.x;
             send_something = true;
         }
                 
         if (keys[SDL_SCANCODE_DOWN]){
             spaceship.yVel = 1;
             spaceship.rect.y += spaceship.yVel * timeSinceLastLoop / GAME_SPEED;
+            serverSpaceship_y = spaceship.rect.y;
+            send_something = true;
         }
                 
         if (keys[SDL_SCANCODE_UP]){ 
             spaceship.yVel = -1;
             spaceship.rect.y += spaceship.yVel * timeSinceLastLoop / GAME_SPEED;
+            serverSpaceship_y = spaceship.rect.y;
+            send_something = true;
         }
         
         // 2 UPDATE -----------------------------------------------------------
@@ -605,27 +584,22 @@ void beTheServer()
         {
             if (send_something)
             {
-                int sent = SDLNet_TCP_Send(client, &message, sizeof(message));
-                if (sent != sizeof(message))
+                int sent = SDLNet_TCP_Send(client, &serverSpaceship_x, sizeof(serverSpaceship_x));
+                if (sent != sizeof(serverSpaceship_x))
                     cerr << "SDLNet_TCP_Send: " << SDLNet_GetError() << endl;
             }
 
+            int clientSpaceship_X;
             while (SDLNet_CheckSockets(set, 0))
             {
-                int got = SDLNet_TCP_Recv(client, &message, sizeof(message));
+                int got = SDLNet_TCP_Recv(client, &clientSpaceship_X, sizeof(clientSpaceship_X));
                 if (got <= 0)
                 {
                     cerr << "Connection problem, quitting..." << endl;
                     return;
                 }
 
-                if (message == LEFT)
-                    cout << "Client pressed left" << endl;
-                else if (message == RIGHT)
-                    cout << "Client pressed right" << endl;
-                else
-                    cerr << "Client sent an unknown message" << endl;
-            }
+           }
         }
 
 
