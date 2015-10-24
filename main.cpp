@@ -265,6 +265,8 @@ void beTheClient(const char servername[])
         int clientSpaceship_Y;
         int serverSpaceship_x;
         int serverSpaceship_y;
+        int protocal;
+        int recieved;
 
         
         if (send_something)
@@ -276,14 +278,38 @@ void beTheClient(const char servername[])
 
         while (SDLNet_CheckSockets(set, 0))
         {
-            int got = SDLNet_TCP_Recv(sock, &serverSpaceship_x, sizeof(serverSpaceship_x));
+            int got = SDLNet_TCP_Recv(sock, &recieved, sizeof(serverSpaceship_x));
             if (got <= 0)
             {
                 cerr << "Connection problem, quitting..." << endl;
                 return;
             }
 
-            cout << serverSpaceship_x << endl;
+            if (recieved == -1)
+            {
+                protocal = recieved;
+            }
+            else if (recieved == -3)
+            {
+                protocal = recieved;
+            }
+            else
+            {
+                if (protocal == -1)
+                {
+                    serverSpaceship_x = recieved;
+                }
+                else if (protocal == -3)
+                {
+                    serverSpaceship_y = recieved;
+                }
+            }
+            
+            cout << "protocal:" << protocal
+                 << ", serverSpacehip_x:" << serverSpaceship_x
+                 << ", serverSpacehip_y:" << serverSpaceship_y
+                 << ", recieved:" << recieved
+                 << endl;
         }
 
         // Because our loop doesn't do much, wait a bit before going again,
@@ -292,7 +318,6 @@ void beTheClient(const char servername[])
     }
 
     SDLNet_TCP_Close(sock);
-
 }
 
 
@@ -370,7 +395,9 @@ void beTheServer()
     // variables that will help us keep track of loop time
     int totalTime, timeSinceLastLoop, oldTotalTime;
     
-     TCPsocket client = 0;
+    TCPsocket client = 0;
+
+    int protocal = -1;
 
     
     //While application is running
@@ -405,28 +432,32 @@ void beTheServer()
             spaceship.xVel = -1;
             spaceship.rect.x += spaceship.xVel * timeSinceLastLoop / GAME_SPEED;
             serverSpaceship_x = spaceship.rect.x;
-            send_something = true;
+            protocal = -1;
+            //send_something = true;
         }
                 
         if (keys[SDL_SCANCODE_RIGHT]){
             spaceship.xVel = 1;
             spaceship.rect.x += spaceship.xVel * timeSinceLastLoop / GAME_SPEED;
             serverSpaceship_x = spaceship.rect.x;
-            send_something = true;
+            protocal = -1;
+            //send_something = true;
         }
                 
         if (keys[SDL_SCANCODE_DOWN]){
             spaceship.yVel = 1;
             spaceship.rect.y += spaceship.yVel * timeSinceLastLoop / GAME_SPEED;
             serverSpaceship_y = spaceship.rect.y;
-            send_something = true;
+            protocal = -3;
+            //send_something = true;
         }
                 
         if (keys[SDL_SCANCODE_UP]){ 
             spaceship.yVel = -1;
             spaceship.rect.y += spaceship.yVel * timeSinceLastLoop / GAME_SPEED;
             serverSpaceship_y = spaceship.rect.y;
-            send_something = true;
+            protocal = -3;
+            //send_something = true;
         }
         
         // 2 UPDATE -----------------------------------------------------------
@@ -458,6 +489,11 @@ void beTheServer()
             {
                 // decide if the maze will change
                 int randomChange = rand() % 5;
+                // keep track of how far the mazes changes
+                int mazeChange = 0;
+                // mazeChangeProtocal = -5 means mazeTop changed
+                // mazeChangeProtocal = -7 means mazeBottom changed
+                int mazeChangeProtocal = 0;
                 // there are 4 dirrections for the maze to change so there is
                 // a 4 in 10 chance that it will change every block reset
                 switch (randomChange)
@@ -466,7 +502,11 @@ void beTheServer()
                         while (rand() % 2 == 0)
                         {
                             if (mazeBottom - mazeTop > 5)
+                            {
                                 ++mazeTop;
+                                ++mazeChange;
+                                mazeChangeProtocal = -5;
+                            }
                         }
                         break;
                     case 1:
@@ -475,6 +515,8 @@ void beTheServer()
                             if (mazeBottom - mazeTop < 8
                                 && mazeTop > 1)
                                 --mazeTop;
+                                --mazeChange;
+                                mazeChangeProtocal = -5;
                         }
                         break;
                     case 2:
@@ -482,6 +524,8 @@ void beTheServer()
                         {       
                             if (mazeBottom - mazeTop > 5)
                                 --mazeBottom;
+                                --mazeChange;
+                                mazeChangeProtocal = -7;
                         }
                         break;
                     case 3:                        
@@ -490,9 +534,15 @@ void beTheServer()
                             if (mazeBottom - mazeTop < 8
                                 && mazeBottom < MAZE_HEIGHT - 1)
                                 ++mazeBottom;
+                                ++mazeChange;
+                                mazeChangeProtocal = -7;
                         }
                         break;
                 }
+
+                std::cout << "mazeChange:" << mazeChange
+                          << ", mazeChangeProtocal:" << mazeChangeProtocal
+                          << std::endl;
 
                 // update the maze based on changes in mazeTop/mazeBottom
                 for (int j = 0; j < MAZE_HEIGHT; ++j)
@@ -582,12 +632,48 @@ void beTheServer()
 
         if (client != 0)
         {
-            if (send_something)
-            {
-                int sent = SDLNet_TCP_Send(client, &serverSpaceship_x, sizeof(serverSpaceship_x));
-                if (sent != sizeof(serverSpaceship_x))
-                    cerr << "SDLNet_TCP_Send: " << SDLNet_GetError() << endl;
-            }
+            //if (send_something)
+            //{
+                if (protocal == -1)
+                {
+                    int sent = SDLNet_TCP_Send(client, &protocal,
+                                               sizeof(protocal));
+                    if (sent != sizeof(protocal))
+                        cerr << "SDLNet_TCP_Send: " << SDLNet_GetError()
+                             << endl;
+                    protocal = -2;
+                }
+                else if (protocal == -2)
+                {
+                    int sent = SDLNet_TCP_Send(client, &spaceship.rect.x,
+                                           sizeof(spaceship.rect.x));
+                    if (sent != sizeof(spaceship.rect.x))
+                        cerr << "SDLNet_TCP_Send: " << SDLNet_GetError()
+                             << endl;
+                    protocal = -3;
+                }
+                else if (protocal == -3)
+                {
+                    int sent = SDLNet_TCP_Send(client, &protocal,
+                                               sizeof(protocal));
+                    if (sent != sizeof(protocal))
+                        cerr << "SDLNet_TCP_Send: " << SDLNet_GetError()
+                             << endl;
+                    protocal = -4;
+                }
+                else if (protocal == -4)
+                {
+                    int sent = SDLNet_TCP_Send(client, &spaceship.rect.y,
+                                           sizeof(spaceship.rect.y));
+                    if (sent != sizeof(spaceship.rect.y))
+                        cerr << "SDLNet_TCP_Send: " << SDLNet_GetError()
+                             << endl;
+                    protocal = -1;
+                }
+
+                
+
+                //}
 
             int clientSpaceship_X;
             while (SDLNet_CheckSockets(set, 0))
