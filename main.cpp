@@ -13,8 +13,6 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-
-
 //################### GAME CONFIGUTATIONS ##############################333
 //Screen dimension constants
 const int SCREEN_WIDTH = 640;
@@ -25,7 +23,7 @@ const Uint8 *keys = SDL_GetKeyboardState(NULL);
 
 //The window we'll be rendering to
 SDL_Window* window = NULL;
-	
+
 //The surface contained by the window
 SDL_Surface* screenSurface = NULL;
 
@@ -42,6 +40,21 @@ int determineMazeRightEdge(Maze maze[MAZE_WIDTH][MAZE_HEIGHT])
             mazeRightEdge = maze[i][0].rect.x + BLOCK_WIDTH;
     }
     return mazeRightEdge;
+}
+
+int determineMazeLeftIndex(Maze maze[MAZE_WIDTH][MAZE_HEIGHT])
+{    
+    int mazeLeftEdge = maze[0][0].rect.x;
+    int mazeLeftIndex = 0;
+    for (int i = 1; i < MAZE_WIDTH; ++i)
+    {
+        if (maze[i][0].rect.x + BLOCK_WIDTH < mazeLeftEdge)
+        {
+            mazeLeftEdge = maze[i][0].rect.x + BLOCK_WIDTH;
+            mazeLeftIndex = i;
+        }
+    }
+    return mazeLeftIndex;
 }
 
 // check for ship collision with maze
@@ -78,7 +91,7 @@ bool shipMazeCollision(Spaceship spaceship,
                     && (topMaze <=  bottomSpaceship)
                     && (rightMaze >= leftSpaceship))
                 {
-                    //return true;
+                    return true;
                 }
             }    
         }
@@ -218,14 +231,8 @@ int main( int argc, char* argv[] )
    
 void beTheClient(const char servername[])
 {
- 
     // Connection information
     IPaddress ip;
-
-    //As a test: Trying to send the spaceship x position to the Client
-    //but it's not working yet.
-    int serverSpaceship_x;
-    int serverSpaceship_y;
 
     // Resolve the argument into an IPaddress
     if (SDLNet_ResolveHost(&ip, servername, PORT) == -1)
@@ -244,7 +251,6 @@ void beTheClient(const char servername[])
 
     // Create a "socket set" with the new socket, so that you can check
     // to see if the server has sent anything.
-
     SDLNet_SocketSet set = SDLNet_AllocSocketSet(1);
     if(!set)
         cerr << "SDLNet_AllocSocketSet: " << SDLNet_GetError() << endl;
@@ -253,33 +259,227 @@ void beTheClient(const char servername[])
         if (SDLNet_TCP_AddSocket(set, sock) == -1)
             cerr << "SDLNet_AddSocket: " << SDLNet_GetError() << endl;
     }
-    
 
-    int mazeTop = 6;
-    int mazeBottom = 10;
-    
+    // variables that assist in network connection and store variables that
+    // are sent to client
+    int serverSpaceship_x;
+    int serverSpaceship_y;
+    int protocalServerToClient;
+    int protocalClientToServer = -1;
+    int recieved;
+
+     //Main loop flag
     bool quit = false;
+
+    //Event handler
+    SDL_Event e;
+
+    // create the spaceship object
+    Spaceship spaceship;
+    spaceship.rect.y += 50;
+
+    // create the spaceship object that will draw were the server spaceship
+    // is
+    Spaceship spaceshipServer;
+    spaceshipServer.xVel = 0;
+
+    // create the gameover object
+    GameOverBoard gameover;
+
+    // set up score
+    int score = 0;
+    int distance = 0;
+    int SCORE_RATE = 16;
+    Score scoreObj;
+    scoreObj.font = TTF_OpenFont( "FreeSansBold.ttf", 28 );
+
+    // maze
+    int mazeRightEdge;
+    int mazeLeftIndex;
+    int mazeTop = 6, mazeBottom = 10;
+    // create the maze array
+    Maze maze[MAZE_WIDTH][MAZE_HEIGHT];
+    
+    // position the maze array
+    for (int i = 0; i < MAZE_WIDTH; ++i)
+    {
+        for (int j = 0; j < MAZE_HEIGHT; ++j)
+        {            
+            maze[i][j].rect.x = i * BLOCK_WIDTH;
+            maze[i][j].rect.y = j * BLOCK_WIDTH;
+        }
+    }
+
+    // cut out some of the maze
+    for (int i = 0; i < MAZE_WIDTH; ++i)
+    {
+        for (int j = mazeTop; j < mazeBottom; ++j)
+        {
+            maze[i][j].exist = false;
+        }
+    }
+
+    // variables that will help us keep track of loop time
+    int totalTime, timeSinceLastLoop, oldTotalTime;
     
     // Main client loop
     while (!quit)
     {
-        SDL_Event event;
-        bool send_something = false;
+        //SDL_Event event;
+
+        // 1 INPUT ----------------------------------------------------------
         
-        int clientSpaceship_X;
-        int clientSpaceship_Y;
-        int serverSpaceship_x;
-        int serverSpaceship_y;
-        int protocal;
-        int recieved;
+        // keep track of loop time
+        totalTime = SDL_GetTicks();
+        timeSinceLastLoop = totalTime - oldTotalTime;            
+        oldTotalTime = totalTime;
         
-        if (send_something)
+        //Handle events on queue
+        while( SDL_PollEvent( &e ) != 0 )
         {
-            int sent = SDLNet_TCP_Send(sock, &clientSpaceship_X, sizeof(clientSpaceship_X));
-            if (sent != sizeof(clientSpaceship_X))
-                cerr << "SDLNet_TCP_Send: " << SDLNet_GetError() << endl;
+            //User requests quit
+            if( e.type == SDL_QUIT )
+            {
+                quit = true;
+            }
+        }
+        
+        // key input with scancode
+        if (keys[SDL_SCANCODE_LEFT]){
+            spaceship.xVel = -1;
+            spaceship.rect.x += spaceship.xVel * timeSinceLastLoop / GAME_SPEED;
+        }
+                
+        if (keys[SDL_SCANCODE_RIGHT]){
+            spaceship.xVel = 1;
+            spaceship.rect.x += spaceship.xVel * timeSinceLastLoop / GAME_SPEED;
+        }
+                
+        if (keys[SDL_SCANCODE_DOWN]){
+            spaceship.yVel = 1;
+            spaceship.rect.y += spaceship.yVel * timeSinceLastLoop / GAME_SPEED;
+        }
+                
+        if (keys[SDL_SCANCODE_UP]){ 
+            spaceship.yVel = -1;
+            spaceship.rect.y += spaceship.yVel * timeSinceLastLoop / GAME_SPEED;
         }
 
+        // 2 UPDATE ---------------------------------------------------------
+
+        // position the replica of the server spaceship according to the
+        // x y that was recieved through network
+        spaceshipServer.rect.x = serverSpaceship_x;
+        spaceshipServer.rect.y = serverSpaceship_y;
+        
+        if (protocalServerToClient == -1 && spaceshipServer.rect.x != 305)
+        {
+            spaceshipServer.xVel = 1;
+        }        
+        
+        // determine maze right edge
+        mazeRightEdge = determineMazeRightEdge(maze);
+        // determine the index of the leftmost peice so we know what to
+        // move back to the right
+        mazeLeftIndex = determineMazeLeftIndex(maze);
+                        
+        // move maze
+        for (int i = 0; i < MAZE_WIDTH; ++i)
+        {
+            for (int j = 0; j < MAZE_HEIGHT; ++j)
+            {
+                maze[i][j].rect.x -= std::abs(spaceshipServer.xVel);
+                    //* timeSinceLastLoop / GAME_SPEED;
+            }
+        }
+        
+        // update the maze based on changes in mazeTop/mazeBottom
+        if (protocalServerToClient == -5 || protocalServerToClient == -7)
+        {
+            for (int j = 0; j < MAZE_HEIGHT; ++j)
+            {
+                maze[mazeLeftIndex][j].rect.x = mazeRightEdge;
+                if (j > mazeTop && j < mazeBottom)
+                {
+                    maze[mazeLeftIndex][j].exist = false;
+                }
+                else
+                {
+                    maze[mazeLeftIndex][j].exist = true;
+                }
+            }
+        }
+        
+        // 3 DRAW -----------------------------------------------------------
+
+        // fill screen surface
+        SDL_FillRect(screenSurface, NULL, 0x000000);      
+
+        // draw maze
+        for (int i = 0; i < MAZE_WIDTH; ++i)
+        {
+            for (int j = 0; j < MAZE_HEIGHT; ++j)
+            {
+                if (maze[i][j].exist)
+                {
+                    SDL_BlitSurface( maze[i][j].surface, NULL, screenSurface,
+                                     &maze[i][j].rect );
+                }
+            }
+        }
+        
+        // draw client spaceship        
+        SDL_BlitSurface( spaceship.surface, NULL, screenSurface,
+                         &spaceship.rect );
+        
+        // draw server spaceship        
+        SDL_BlitSurface( spaceshipServer.surface, NULL, screenSurface,
+                         &spaceshipServer.rect );
+        
+        //Update the surface
+        SDL_UpdateWindowSurface( window );
+
+        // 4 NETWORK --------------------------------------------------------
+
+        // send to server
+        if (protocalClientToServer == -1)
+        {
+            int sent = SDLNet_TCP_Send(sock, &protocalClientToServer,
+                                       sizeof(protocalClientToServer));
+            if (sent != sizeof(sock, &protocalClientToServer))
+                cerr << "SDLNet_TCP_Send: " << SDLNet_GetError() << endl;
+            
+            protocalClientToServer = -2;
+        }
+        else if (protocalClientToServer == -2)
+        {
+            int sent = SDLNet_TCP_Send(sock, &spaceship.rect.x,
+                                       sizeof(spaceship.rect.x));
+            if (sent != sizeof(sock, &spaceship.rect.x))
+                cerr << "SDLNet_TCP_Send: " << SDLNet_GetError() << endl;
+            
+            protocalClientToServer = -3;
+        }
+        else if (protocalClientToServer == -3)
+        {
+            int sent = SDLNet_TCP_Send(sock, &protocalClientToServer,
+                                       sizeof(protocalClientToServer));
+            if (sent != sizeof(sock, &protocalClientToServer))
+                cerr << "SDLNet_TCP_Send: " << SDLNet_GetError() << endl;
+            
+            protocalClientToServer = -4;
+        }
+        else if (protocalClientToServer == -4)
+        {
+            int sent = SDLNet_TCP_Send(sock, &spaceship.rect.y,
+                                       sizeof(spaceship.rect.y));
+            if (sent != sizeof(sock, &spaceship.rect.y))
+                cerr << "SDLNet_TCP_Send: " << SDLNet_GetError() << endl;
+            
+            protocalClientToServer = -1;
+        }
+        
+        // recieve from server
         while (SDLNet_CheckSockets(set, 0))
         {
             int got = SDLNet_TCP_Recv(sock, &recieved, sizeof(serverSpaceship_x));
@@ -291,47 +491,55 @@ void beTheClient(const char servername[])
 
             if (recieved == -1)
             {
-                protocal = recieved;
+                protocalServerToClient = recieved;
             }
             else if (recieved == -3)
             {
-                protocal = recieved;
+                protocalServerToClient = recieved;
             }
             else if (recieved == -5)
             {                
-                protocal = recieved;
+                protocalServerToClient = recieved;
             }
             else if (recieved == -7)
             {
-                protocal = recieved;
+                protocalServerToClient = recieved;
             }
             else
             {
-                if (protocal == -1)
+                if (protocalServerToClient == -1)
                 {
                     serverSpaceship_x = recieved;
                 }
-                else if (protocal == -3)
+                else if (protocalServerToClient == -3)
                 {
                     serverSpaceship_y = recieved;
                 }
-                else if (protocal == -5)
+                else if (protocalServerToClient == -5)
                 {
                     mazeTop = recieved;
                 }
-                else if (protocal == -7)
+                else if (protocalServerToClient == -7)
                 {
                     mazeBottom = recieved;
                 }
             }
-            
-            cout << "protocal:" << protocal
+
+            std::cout << mazeRightEdge << ' ' << mazeLeftIndex << std::endl;
+
+            /*
+            cout << "protocalServerToClient:" << protocalServerToClient
                  << ", serverSpacehip_x:" << serverSpaceship_x
                  << ", serverSpacehip_y:" << serverSpaceship_y
                  << ", recieved:" << recieved << '\n'
                  << "mazeTop:" << mazeTop
                  << ", mazeBottom:" << mazeBottom
                  << endl;
+            */            
+
+            //std::cout << maze[0][0].rect.x << ' ' << maze[0][0].rect.y
+            //          << ' ' << spaceshipServer.xVel
+            //          << std::endl;
         }
 
         // Because our loop doesn't do much, wait a bit before going again,
@@ -345,11 +553,10 @@ void beTheClient(const char servername[])
 
 void beTheServer()
 {
-   
-
     // Connection information
     IPaddress ip;
 
+    // Resolve the argument into an IPaddress
     if (SDLNet_ResolveHost(&ip, NULL, PORT) == -1)
     {
         cerr << "SDLNet_ResolveHost: " << SDLNet_GetError() << endl;
@@ -375,6 +582,8 @@ void beTheServer()
 
     // create the spaceship object
     Spaceship spaceship;
+    // create the spaceship object that is a replica of the client spaceship
+    Spaceship spaceshipClient;
 
     // create the gameover object
     GameOverBoard gameover;
@@ -402,7 +611,7 @@ void beTheServer()
         }
     }
 
-    // cut out some of the maze temporarily just so we can see it    
+    // cut out some of the maze
     for (int i = 0; i < MAZE_WIDTH; ++i)
     {
         for (int j = mazeTop; j < mazeBottom; ++j)
@@ -416,13 +625,15 @@ void beTheServer()
     
     TCPsocket client = 0;
 
-    int protocal = -1;
+    int clientSpaceship_x;
+    int clientSpaceship_y;
+    int protocalServerToClient = -1;
+    int recieved;
 
     // Main server loop    
     //While application is running
     while( !quit )
-    {
-       
+    {       
         bool send_something = false;
         //As a test: Trying to send the spaceship x position to the Client
         //but it's not working yet.
@@ -450,36 +661,24 @@ void beTheServer()
         if (keys[SDL_SCANCODE_LEFT]){
             spaceship.xVel = -1;
             spaceship.rect.x += spaceship.xVel * timeSinceLastLoop / GAME_SPEED;
-            serverSpaceship_x = spaceship.rect.x;
-            //protocal = -1;
-            //send_something = true;
         }
                 
         if (keys[SDL_SCANCODE_RIGHT]){
             spaceship.xVel = 1;
             spaceship.rect.x += spaceship.xVel * timeSinceLastLoop / GAME_SPEED;
-            serverSpaceship_x = spaceship.rect.x;
-            //protocal = -1;
-            //send_something = true;
         }
                 
         if (keys[SDL_SCANCODE_DOWN]){
             spaceship.yVel = 1;
             spaceship.rect.y += spaceship.yVel * timeSinceLastLoop / GAME_SPEED;
-            serverSpaceship_y = spaceship.rect.y;
-            //protocal = -3;
-            //send_something = true;
         }
                 
         if (keys[SDL_SCANCODE_UP]){ 
             spaceship.yVel = -1;
             spaceship.rect.y += spaceship.yVel * timeSinceLastLoop / GAME_SPEED;
-            serverSpaceship_y = spaceship.rect.y;
-            //protocal = -3;
-            //send_something = true;
         }
         
-        // 2 UPDATE -----------------------------------------------------------
+        // 2 UPDATE ---------------------------------------------------------
        
         // if we are moving sum up the distance and use to determine the score
         if (spaceship.xVel != 0)
@@ -488,13 +687,18 @@ void beTheServer()
         }
         score = distance / SCORE_RATE;
         
+        // position the replica of the client spaceship according to the
+        // x y that was recieved through network
+        spaceshipClient.rect.x = clientSpaceship_x;
+        spaceshipClient.rect.y = clientSpaceship_y;
+        
         // move maze
         for (int i = 0; i < MAZE_WIDTH; ++i)
         {
             for (int j = 0; j < MAZE_HEIGHT; ++j)
             {
-                maze[i][j].rect.x -= std::abs(spaceship.xVel)
-                    * timeSinceLastLoop / GAME_SPEED;
+                maze[i][j].rect.x -= std::abs(spaceship.xVel);
+                    //* timeSinceLastLoop / GAME_SPEED;
             }
         }
         
@@ -502,7 +706,7 @@ void beTheServer()
         mazeRightEdge = determineMazeRightEdge(maze);
 
         // declare variables for sending maze info to client
-        int mazeChange; // mazeChangeProtocal;
+        //int mazeChange; // mazeChangeProtocal;
         
         // if maze touches wall
         for (int i = 0; i < MAZE_WIDTH; ++i)
@@ -512,7 +716,7 @@ void beTheServer()
                 // decide if the maze will change
                 int randomChange = rand() % 5;
                 // keep track of how far the mazes changes
-                mazeChange = 0;
+                //mazeChange = 0;
                 // mazeChangeProtocal = -5 means mazeTop changed
                 // mazeChangeProtocal = -7 means mazeBottom changed
                 //mazeChangeProtocal = 0;
@@ -526,8 +730,7 @@ void beTheServer()
                             if (mazeBottom - mazeTop > 5)
                             {
                                 ++mazeTop;
-                                ++mazeChange;
-                                protocal = -5;
+                                protocalServerToClient = -5;
                             }
                         }
                         break;
@@ -537,8 +740,7 @@ void beTheServer()
                             if (mazeBottom - mazeTop < 8
                                 && mazeTop > 1)
                                 --mazeTop;
-                                --mazeChange;
-                                protocal = -5;
+                                protocalServerToClient = -5;
                         }
                         break;
                     case 2:
@@ -546,8 +748,7 @@ void beTheServer()
                         {       
                             if (mazeBottom - mazeTop > 5)
                                 --mazeBottom;
-                                --mazeChange;
-                                protocal = -7;
+                                protocalServerToClient = -7;
                         }
                         break;
                     case 3:                        
@@ -556,18 +757,11 @@ void beTheServer()
                             if (mazeBottom - mazeTop < 8
                                 && mazeBottom < MAZE_HEIGHT - 1)
                                 ++mazeBottom;
-                                ++mazeChange;
-                                protocal = -7;
+                                protocalServerToClient = -7;
                         }
                         break;
                 }
-
-                std::cout << "mazeChange:" << mazeChange
-                          << ", protocal:" << protocal
-                          << ", mazeTop:" << mazeTop
-                          << ", mazeBottom:" << mazeBottom
-                          << std::endl;
-
+                
                 // update the maze based on changes in mazeTop/mazeBottom
                 for (int j = 0; j < MAZE_HEIGHT; ++j)
                 {
@@ -599,10 +793,11 @@ void beTheServer()
             
             // set quit to true so loop will exit on next iteration
             quit = true;
-        }        
+        }
 
-        // 3 DRAW -------------------------------------------------------------
-        
+        // 3 DRAW -----------------------------------------------------------
+
+        // fill screen surface
         SDL_FillRect(screenSurface, NULL, 0x000000);
 
         // draw maze
@@ -621,6 +816,9 @@ void beTheServer()
         // draw spaceship
         SDL_BlitSurface( spaceship.surface, NULL, screenSurface,
                          &spaceship.rect );
+        // draw client spaceship
+        SDL_BlitSurface( spaceshipClient.surface, NULL, screenSurface,
+                         &spaceshipClient.rect );
 
         // draw score        
         SDL_Color score_color = {0, 255, 0};
@@ -634,7 +832,8 @@ void beTheServer()
         
         //Update the surface
         SDL_UpdateWindowSurface( window );
-    
+
+        // 4 NETWORK --------------------------------------------------------
 
         // If the client socket is still NULL, no-one has connected yet.
         // Check to see if someone wants to connect.
@@ -656,91 +855,113 @@ void beTheServer()
 
         if (client != 0)
         {
-            if (protocal == -1)
+            if (protocalServerToClient == -1)
             {
-                int sent = SDLNet_TCP_Send(client, &protocal,
-                                           sizeof(protocal));
-                if (sent != sizeof(protocal))
+                int sent = SDLNet_TCP_Send(client, &protocalServerToClient,
+                                           sizeof(protocalServerToClient));
+                if (sent != sizeof(protocalServerToClient))
                     cerr << "SDLNet_TCP_Send: " << SDLNet_GetError()
                          << endl;
-                protocal = -2;
+                protocalServerToClient = -2;
             }
-            else if (protocal == -2)
+            else if (protocalServerToClient == -2)
             {
                 int sent = SDLNet_TCP_Send(client, &spaceship.rect.x,
                                            sizeof(spaceship.rect.x));
                 if (sent != sizeof(spaceship.rect.x))
                     cerr << "SDLNet_TCP_Send: " << SDLNet_GetError()
                          << endl;
-                protocal = -3;
+                protocalServerToClient = -3;
             }
-            else if (protocal == -3)
+            else if (protocalServerToClient == -3)
             {
-                int sent = SDLNet_TCP_Send(client, &protocal,
-                                           sizeof(protocal));
-                if (sent != sizeof(protocal))
+                int sent = SDLNet_TCP_Send(client, &protocalServerToClient,
+                                           sizeof(protocalServerToClient));
+                if (sent != sizeof(protocalServerToClient))
                     cerr << "SDLNet_TCP_Send: " << SDLNet_GetError()
                          << endl;
-                protocal = -4;
+                protocalServerToClient = -4;
             }
-            else if (protocal == -4)
+            else if (protocalServerToClient == -4)
             {
                 int sent = SDLNet_TCP_Send(client, &spaceship.rect.y,
                                            sizeof(spaceship.rect.y));
                 if (sent != sizeof(spaceship.rect.y))
                     cerr << "SDLNet_TCP_Send: " << SDLNet_GetError()
                          << endl;
-                protocal = -1;
+                protocalServerToClient = -1;
             }
-            else if (protocal == -5)
+            else if (protocalServerToClient == -5)
             {
-                int sent = SDLNet_TCP_Send(client, &protocal,
-                                           sizeof(protocal));
-                if (sent != sizeof(protocal))
+                int sent = SDLNet_TCP_Send(client, &protocalServerToClient,
+                                           sizeof(protocalServerToClient));
+                if (sent != sizeof(protocalServerToClient))
                     cerr << "SDLNet_TCP_Send: " << SDLNet_GetError()
                          << endl;
-                protocal = -6;
+                protocalServerToClient = -6;
             }
-            else if (protocal == -6)
+            else if (protocalServerToClient == -6)
             {
                 int sent = SDLNet_TCP_Send(client, &mazeTop,
                                            sizeof(mazeTop));
                 if (sent != sizeof(mazeTop))
                     cerr << "SDLNet_TCP_Send: " << SDLNet_GetError()
                          << endl;
-                protocal = -1;
+                protocalServerToClient = -1;
             }
-            else if (protocal == -7)
+            else if (protocalServerToClient == -7)
             {
-                int sent = SDLNet_TCP_Send(client, &protocal,
-                                           sizeof(protocal));
-                if (sent != sizeof(protocal))
+                int sent = SDLNet_TCP_Send(client, &protocalServerToClient,
+                                           sizeof(protocalServerToClient));
+                if (sent != sizeof(protocalServerToClient))
                     cerr << "SDLNet_TCP_Send: " << SDLNet_GetError()
                          << endl;
-                protocal = -8;
+                protocalServerToClient = -8;
             }
-            else if (protocal == -8)
+            else if (protocalServerToClient == -8)
             {
                 int sent = SDLNet_TCP_Send(client, &mazeBottom,
                                            sizeof(mazeBottom));
                 if (sent != sizeof(mazeBottom))
                     cerr << "SDLNet_TCP_Send: " << SDLNet_GetError()
                          << endl;
-                protocal = -1;
+                protocalServerToClient = -1;
             }
 
             int clientSpaceship_X;
             while (SDLNet_CheckSockets(set, 0))
             {
-                int got = SDLNet_TCP_Recv(client, &clientSpaceship_X,
-                                          sizeof(clientSpaceship_X));
+                int got = SDLNet_TCP_Recv(client, &recieved,
+                                          sizeof(recieved));
                 if (got <= 0)
                 {
                     cerr << "Connection problem, quitting..." << endl;
                     return;
                 }
-            }
-        }
+
+                if (recieved == -1)
+                {
+                    protocalServerToClient = recieved;
+                }
+                else if (recieved == -3)
+                {
+                    protocalServerToClient = recieved;
+                }
+                else
+                {
+                    if (protocalServerToClient == -1)
+                    {
+                        clientSpaceship_x = recieved;
+                    }
+                    else if (protocalServerToClient == -3)
+                    {
+                        clientSpaceship_y = recieved;
+                    }
+                }
+            }            
+        }        
+        std::cout << clientSpaceship_x << ' ' << clientSpaceship_y
+                  << std::endl;
     }
 
     //Deallocate surfaces    
@@ -762,15 +983,11 @@ void beTheServer()
     scoreObj.surface = NULL;    
      
     //Free resources and close SDL
-    close();    
-
-   
-
+    close();       
         
-        // Because our loop doesn't do much, wait a bit before going again,
-        // to keep from overwhelming the CPU.
-        SDL_Delay(50);
-    
+    // Because our loop doesn't do much, wait a bit before going again,
+    // to keep from overwhelming the CPU.
+    SDL_Delay(50);    
 
     SDLNet_TCP_Close(listener);
     SDLNet_TCP_Close(client);
