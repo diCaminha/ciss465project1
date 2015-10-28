@@ -415,6 +415,23 @@ void beTheClient(const char servername[])
             }
         }
         
+        // check for ship collision with maze
+        if (shipMazeCollision(spaceship, maze))
+        {            
+            // draw game over board
+            SDL_BlitSurface( gameover.surface, NULL,
+                             screenSurface, &gameover.rect );
+            
+            //Update the surface
+            SDL_UpdateWindowSurface( window );
+            
+            // wait and then close
+            SDL_Delay(3000);
+            
+            // set quit to true so loop will exit on next iteration
+            quit = true;
+        }
+        
         // 3 DRAW -----------------------------------------------------------
 
         // fill screen surface
@@ -535,7 +552,7 @@ void beTheServer()
         cerr << "SDLNet_TCP_Open: " << SDLNet_GetError() << endl;
         return;
     }
-    
+        
     TCPsocket client = 0;
     
     // variables for network connection
