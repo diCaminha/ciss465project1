@@ -18,7 +18,7 @@ using std::endl;
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 
-enum Protocal { SPACESHIP_POS, MAZE, DONT_SEND_MAZE };
+enum Protocal { SPACESHIP_POS, MAZE, DONT_SEND_MAZE, SPACESHIP_COLLIDED};
 
  // set up key state
 const Uint8 *keys = SDL_GetKeyboardState(NULL); 
@@ -125,6 +125,21 @@ bool init()
 void sendSpaceshipPos(int x, int y, TCPsocket sock)
 {
     Protocal protocal = SPACESHIP_POS;
+    int sent;
+    sent = SDLNet_TCP_Send(sock, &protocal, sizeof(protocal));
+    if (sent != sizeof(sock, protocal))
+        cerr << "SDLNet_TCP_Send: " << SDLNet_GetError() << endl;
+    sent = SDLNet_TCP_Send(sock, &x, sizeof(x));
+    if (sent != sizeof(sock, x))
+        cerr << "SDLNet_TCP_Send: " << SDLNet_GetError() << endl;
+    sent = SDLNet_TCP_Send(sock, &y, sizeof(y));
+    if (sent != sizeof(sock, y))
+        cerr << "SDLNet_TCP_Send: " << SDLNet_GetError() << endl;
+}
+
+void sendSpaceshipCollided(int x, int y, TCPsocket sock)
+{
+    Protocal protocal = SPACESHIP_COLLIDED;
     int sent;
     sent = SDLNet_TCP_Send(sock, &protocal, sizeof(protocal));
     if (sent != sizeof(sock, protocal))
@@ -287,7 +302,7 @@ void beTheClient(const char servername[])
     // variables for network connection
     int serverSpaceship_x = 0;
     int serverSpaceship_y;
-    Protocal protocal;
+    Protocal protocalRecv;
 
      //Main loop flag
     bool quit = false;
@@ -343,6 +358,7 @@ void beTheClient(const char servername[])
 
     // variables that will help us keep track of loop time
     int totalTime, timeSinceLastLoop, oldTotalTime;
+    bool collisionHappens = false;
     
     // Main client loop
     while (!quit)
@@ -418,10 +434,14 @@ void beTheClient(const char servername[])
         // check for ship collision with maze
         if (shipMazeCollision(spaceship, maze))
         {            
+            
+            collisionHappens = true;
+            /*
             // draw game over board
             SDL_BlitSurface( gameover.surface, NULL,
                              screenSurface, &gameover.rect );
             
+
             //Update the surface
             SDL_UpdateWindowSurface( window );
             
@@ -430,6 +450,7 @@ void beTheClient(const char servername[])
             
             // set quit to true so loop will exit on next iteration
             quit = true;
+            */
         }
         
         // 3 DRAW -----------------------------------------------------------
@@ -455,22 +476,29 @@ void beTheClient(const char servername[])
                          &spaceshipServer.rect );
         
         // draw client spaceship        
-        SDL_BlitSurface( spaceship.surface, NULL, screenSurface,
+        if(!collisionHappens){
+            SDL_BlitSurface( spaceship.surface, NULL, screenSurface,
                          &spaceship.rect );
-        
+        }
         //Update the surface
         SDL_UpdateWindowSurface( window );
 
         // 4 NETWORK --------------------------------------------------------
         
+
         // send spaceship position to the server
-        sendSpaceshipPos(spaceship.rect.x, spaceship.rect.y, sock);
-        
+        if(!collisionHappens){
+            sendSpaceshipPos(spaceship.rect.x, spaceship.rect.y, sock);
+        }else{
+
+            sendSpaceshipCollided(0,0,sock);
+        }
+            
         // recieve from server
         while (SDLNet_CheckSockets(set, 0))
         {
             //SDLNet_CheckSockets(set, 0)
-            int got = SDLNet_TCP_Recv(sock, &protocal,
+            int got = SDLNet_TCP_Recv(sock, &protocalRecv,
                                       sizeof(serverSpaceship_x));
             if (got <= 0)
             {
@@ -478,7 +506,7 @@ void beTheClient(const char servername[])
                 return;
             }
 
-            if (protocal == SPACESHIP_POS)
+            if (protocalRecv == SPACESHIP_POS)
             {
                 SDLNet_TCP_Recv(sock, &serverSpaceship_x,
                                 sizeof(serverSpaceship_x));
@@ -486,7 +514,7 @@ void beTheClient(const char servername[])
                                 sizeof(serverSpaceship_y));
             }
                 
-            if (protocal == MAZE)
+            if (protocalRecv == MAZE)
             {
                 int network_maze_index;
                 SDLNet_TCP_Recv(sock, &network_maze_index,
@@ -584,6 +612,8 @@ void beTheServer()
     int SCORE_RATE = 16;
     Score scoreObj;
     scoreObj.font = TTF_OpenFont( "FreeSansBold.ttf", 28 );
+
+    bool clientAlive = true;
 
     // maze
     int mazeRightEdge;
@@ -869,6 +899,14 @@ void beTheServer()
                                     sizeof(clientSpaceship_x));
                     SDLNet_TCP_Recv(client, &clientSpaceship_y,
                                     sizeof(clientSpaceship_y));
+                }else if(protocal == SPACESHIP_COLLIDED){
+
+                     SDLNet_TCP_Recv(client, &clientSpaceship_x,
+                                    sizeof(clientSpaceship_x));
+                    SDLNet_TCP_Recv(client, &clientSpaceship_y,
+                                    sizeof(clientSpaceship_y));
+                    clientAlive = false;
+
                 }
             }
             protocal = DONT_SEND_MAZE;
