@@ -512,7 +512,29 @@ void beTheClient(const char servername[])
                                 sizeof(serverSpaceship_x));
                 SDLNet_TCP_Recv(sock, &serverSpaceship_y,
                                 sizeof(serverSpaceship_y));
-            }
+            }else if(protocalRecv == SPACESHIP_COLLIDED){
+
+                     SDLNet_TCP_Recv(sock, &serverSpaceship_x,
+                                    sizeof(serverSpaceship_x));
+                    SDLNet_TCP_Recv(sock, &serverSpaceship_y,
+                                    sizeof(serverSpaceship_y));
+                    //serverAlive = false;
+                    if(collisionHappens){
+                        // draw game over board
+                        SDL_BlitSurface( gameover.surface, NULL,
+                                         screenSurface, &gameover.rect );
+                        
+                        //Update the surface
+                        SDL_UpdateWindowSurface( window );
+                        
+                        // wait and then close
+                        SDL_Delay(3000);
+                        
+                        // set quit to true so loop will exit on next iteration
+                        quit = true;
+                    }
+                    
+                }
                 
             if (protocalRecv == MAZE)
             {
@@ -565,6 +587,9 @@ void beTheServer()
 {
     // Connection information
     IPaddress ip;
+
+    //variable used to check if the server spaceship collide
+    bool collisionHappens = false;
 
     // Resolve the argument into an IPaddress
     if (SDLNet_ResolveHost(&ip, NULL, PORT) == -1)
@@ -797,7 +822,8 @@ void beTheServer()
         // check for ship collision with maze
         if (shipMazeCollision(spaceship, maze))
         {            
-            // draw game over board
+            collisionHappens = true;
+            /*// draw game over board
             SDL_BlitSurface( gameover.surface, NULL,
                              screenSurface, &gameover.rect );
             
@@ -808,7 +834,7 @@ void beTheServer()
             SDL_Delay(3000);
             
             // set quit to true so loop will exit on next iteration
-            quit = true;
+            quit = true;*/
         }
 
         // 3 DRAW -----------------------------------------------------------
@@ -833,10 +859,11 @@ void beTheServer()
         SDL_BlitSurface( spaceshipClient.surface, NULL, screenSurface,
                          &spaceshipClient.rect );
         
-        // draw server spaceship
-        SDL_BlitSurface( spaceship.surface, NULL, screenSurface,
-                         &spaceship.rect );
-
+        if(!collisionHappens){
+            // draw server spaceship
+            SDL_BlitSurface( spaceship.surface, NULL, screenSurface,
+                            &spaceship.rect );
+        }
         // draw score        
         SDL_Color score_color = {0, 255, 0};
         scoreObj.surface = TTF_RenderText_Solid(
@@ -879,8 +906,13 @@ void beTheServer()
                          client);
             }
             
-            // send server spaceship position to the client
-            sendSpaceshipPos(spaceship.rect.x, spaceship.rect.y, client);
+            // send spaceship position to the client
+            if(!collisionHappens){
+                sendSpaceshipPos(spaceship.rect.x, spaceship.rect.y, client);
+            }else{
+
+                sendSpaceshipCollided(0,0,client);
+            }
 
             int clientSpaceship_X;
             while (SDLNet_CheckSockets(set, 0))
@@ -906,7 +938,21 @@ void beTheServer()
                     SDLNet_TCP_Recv(client, &clientSpaceship_y,
                                     sizeof(clientSpaceship_y));
                     clientAlive = false;
-
+                    if(collisionHappens){
+                        // draw game over board
+                        SDL_BlitSurface( gameover.surface, NULL,
+                                         screenSurface, &gameover.rect );
+                        
+                        //Update the surface
+                        SDL_UpdateWindowSurface( window );
+                        
+                        // wait and then close
+                        SDL_Delay(3000);
+                        
+                        // set quit to true so loop will exit on next iteration
+                        quit = true;
+                    }
+                    
                 }
             }
             protocal = DONT_SEND_MAZE;
